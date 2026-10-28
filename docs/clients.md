@@ -67,6 +67,14 @@ Merge the Lucy entry into the host's existing configuration. Preserve unrelated 
 
 ## Recall search guidance
 
+`scope` is an object, never a string:
+
+- user: `{ "kind": "user" }`
+- workspace: `{ "kind": "workspace" }`
+- project: `{ "kind": "project", "id": "<project-id>" }`
+
+Minimal valid request: `{ "query": "database", "scope": { "kind": "user" } }`.
+
 - Start with concise literal and distinctive substrings.
 - Try spelling and spacing variants when phrasing may have changed.
 - Supply known keys, kinds, and scopes when available.

@@ -5,6 +5,7 @@ Lucy Memory MCP exposes exactly three tools.
 ## Common rules
 
 - Tool arguments are JSON objects.
+- `scope` is an object, never a string: user `{ "kind": "user" }`, workspace `{ "kind": "workspace" }`, project `{ "kind": "project", "id": "<project-id>" }`.
 - The package validates against local versioned schemas before using the transport.
 - Tenant and account identity are never tool arguments.
 - Project access is still enforced by Lucy.

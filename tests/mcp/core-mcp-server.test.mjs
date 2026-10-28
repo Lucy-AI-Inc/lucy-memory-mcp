@@ -194,6 +194,11 @@ test('generic MCP client completes handshake, tools/list, and all three calls th
   const instructions = client.getInstructions();
   assert.match(instructions, /concise literal, distinctive substrings/);
   assert.match(instructions, /spelling and spacing variants/);
+  assert.match(instructions, /Scope is an object, never a string/);
+  assert.match(instructions, /user `\{ "kind": "user" \}`/);
+  assert.match(instructions, /workspace `\{ "kind": "workspace" \}`/);
+  assert.match(instructions, /project `\{ "kind": "project", "id": "<project-id>" \}`/);
+  assert.match(instructions, /`\{ "query": "database", "scope": \{ "kind": "user" \} \}`/);
   assert.match(instructions, /known keys, kinds, and scopes/);
   assert.match(instructions, /Broaden or narrow/);
   assert.match(instructions, /one empty result/);

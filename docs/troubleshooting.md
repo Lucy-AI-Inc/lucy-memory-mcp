@@ -25,6 +25,12 @@ Verify:
 
 Confirm the credential belongs to the selected Lucy environment, has not been revoked, and includes the permission required by the operation. Do not print the credential while debugging.
 
+## `invalid_scope`
+
+`scope` must be an object, never a string. Use `{ "kind": "user" }`, `{ "kind": "workspace" }`, or `{ "kind": "project", "id": "<project-id>" }`.
+
+A minimal valid recall is `{ "query": "database", "scope": { "kind": "user" } }`.
+
 ## Empty recall
 
 Empty results are not an error and do not establish that memory is absent. Start with concise literal, distinctive substrings; try spelling and spacing variants; use known keys, kinds, and scopes when available; then broaden or narrow the query and filters iteratively.
