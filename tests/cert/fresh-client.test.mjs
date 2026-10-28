@@ -25,6 +25,11 @@ test('fresh client: manifest, 3 tools, no private prompt, selective recall', () 
   assert.match(instructions, /private notebook/);
   assert.match(instructions, /concise literal, distinctive substrings/);
   assert.match(instructions, /spelling and spacing variants/);
+  assert.match(instructions, /Scope is an object, never a string/);
+  assert.match(instructions, /user `\{ "kind": "user" \}`/);
+  assert.match(instructions, /workspace `\{ "kind": "workspace" \}`/);
+  assert.match(instructions, /project `\{ "kind": "project", "id": "<project-id>" \}`/);
+  assert.match(instructions, /`\{ "query": "database", "scope": \{ "kind": "user" \} \}`/);
   assert.match(instructions, /known keys, kinds, and scopes/);
   assert.match(instructions, /Broaden or narrow/);
   assert.match(instructions, /Do not conclude that memory is absent after one empty result/);

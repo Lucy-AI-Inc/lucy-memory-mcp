@@ -21,6 +21,8 @@ Do not recall for arithmetic, weather, news, or one-shot drafting.
 
 Search recall practically:
 
+- Scope is an object, never a string: user \`{ "kind": "user" }\`, workspace \`{ "kind": "workspace" }\`, project \`{ "kind": "project", "id": "<project-id>" }\`.
+- Minimal valid request: \`{ "query": "database", "scope": { "kind": "user" } }\`.
 - Begin with concise literal, distinctive substrings rather than a long paraphrase.
 - Try spelling and spacing variants.
 - Use known keys, kinds, and scopes when available.
