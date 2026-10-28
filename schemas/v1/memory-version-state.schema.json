@@ -1,0 +1,39 @@
+{
+  "$id": "https://schemas.trylucy.ai/agent-memory/v1/memory-version-state.schema.json",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "additionalProperties": false,
+  "properties": {
+    "id": {
+      "$ref": "https://schemas.trylucy.ai/agent-memory/v1/common.schema.json#/$defs/memoryId"
+    },
+    "key": {
+      "$ref": "https://schemas.trylucy.ai/agent-memory/v1/common.schema.json#/$defs/key"
+    },
+    "kind": {
+      "$ref": "https://schemas.trylucy.ai/agent-memory/v1/common.schema.json#/$defs/memoryKind"
+    },
+    "lifecycle": {
+      "$ref": "https://schemas.trylucy.ai/agent-memory/v1/common.schema.json#/$defs/memoryLifecycle"
+    },
+    "schema_version": {
+      "$ref": "https://schemas.trylucy.ai/agent-memory/v1/common.schema.json#/$defs/schemaVersion"
+    },
+    "scope": {
+      "$ref": "https://schemas.trylucy.ai/agent-memory/v1/common.schema.json#/$defs/scope"
+    },
+    "version": {
+      "$ref": "https://schemas.trylucy.ai/agent-memory/v1/common.schema.json#/$defs/version"
+    }
+  },
+  "required": [
+    "schema_version",
+    "id",
+    "version",
+    "key",
+    "kind",
+    "scope",
+    "lifecycle"
+  ],
+  "title": "Memory version lifecycle state",
+  "type": "object"
+}

@@ -1,0 +1,9 @@
+{
+  "error": {
+    "code": "payload_too_large",
+    "message": "payload_too_large fixture.",
+    "retryable": false
+  },
+  "request_id": "req_payload-too-large",
+  "schema_version": "1"
+}

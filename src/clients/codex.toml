@@ -1,0 +1,8 @@
+[mcp_servers.lucy]
+command = "lucy-memory-mcp"
+args = []
+env_vars = ["LUCY_MEMORY_TOKEN"]
+
+[mcp_servers.lucy.env]
+LUCY_MEMORY_PERMISSIONS = "memory:read,memory:propose"
+LUCY_MEMORY_BASE_URL = "https://www.trylucy.ai"

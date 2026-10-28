@@ -1,0 +1,13 @@
+{
+  "mcp": {
+    "lucy": {
+      "command": "lucy-memory-mcp",
+      "args": [],
+      "env": {
+        "LUCY_MEMORY_TOKEN": "<token>",
+        "LUCY_MEMORY_PERMISSIONS": "memory:read,memory:propose",
+        "LUCY_MEMORY_BASE_URL": "https://www.trylucy.ai"
+      }
+    }
+  }
+}

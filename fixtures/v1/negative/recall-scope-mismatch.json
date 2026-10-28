@@ -1,0 +1,48 @@
+{
+  "as_of": "2026-08-09T10:06:00Z",
+  "consistency": "canonical_active",
+  "notices": [],
+  "request_id": "req_abc",
+  "results": [
+    {
+      "content": "PostgreSQL is canonical.",
+      "id": "mem_123",
+      "key": "architecture.database",
+      "kind": "decision",
+      "receipt": {
+        "authoritative_at": "2026-08-09T10:05:00Z",
+        "authority": {
+          "type": "human_approved"
+        },
+        "id": "rcpt_123_v1",
+        "issued_at": "2026-08-09T10:06:00Z",
+        "key": "architecture.database",
+        "kind": "decision",
+        "lifecycle": "active",
+        "memory_id": "mem_123",
+        "memory_version": 1,
+        "provenance": {
+          "ref": "prov_123",
+          "type": "governed_record"
+        },
+        "relations": [],
+        "schema_version": "1",
+        "scope": {
+          "id": "project_abc",
+          "kind": "project"
+        }
+      },
+      "schema_version": "1",
+      "scope": {
+        "id": "project_abc",
+        "kind": "project"
+      },
+      "status": "active",
+      "version": 1
+    }
+  ],
+  "schema_version": "1",
+  "scope": {
+    "kind": "workspace"
+  }
+}

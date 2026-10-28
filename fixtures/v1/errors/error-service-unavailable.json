@@ -1,0 +1,9 @@
+{
+  "error": {
+    "code": "service_unavailable",
+    "message": "service_unavailable fixture.",
+    "retryable": true
+  },
+  "request_id": "req_service-unavailable",
+  "schema_version": "1"
+}

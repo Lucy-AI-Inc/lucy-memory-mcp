@@ -1,0 +1,26 @@
+{
+  "created_at": "2026-08-09T10:00:00Z",
+  "decided_at": "2026-08-09T10:05:00Z",
+  "expires_at": "2026-08-16T10:00:00Z",
+  "id": "proposal_789",
+  "operation": "replace",
+  "proposal_version": 1,
+  "relations": [],
+  "requested": {
+    "expected_version": 1,
+    "key": "architecture.database",
+    "kind": "decision",
+    "memory_id": "mem_123",
+    "scope": {
+      "id": "project_abc",
+      "kind": "project"
+    }
+  },
+  "result": {
+    "memory_id": "mem_123",
+    "memory_version": 2,
+    "receipt_id": "rcpt_123_v2"
+  },
+  "schema_version": "1",
+  "status": "approved"
+}

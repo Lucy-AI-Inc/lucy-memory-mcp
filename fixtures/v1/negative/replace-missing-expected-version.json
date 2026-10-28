@@ -1,0 +1,13 @@
+{
+  "content": "CockroachDB is canonical.",
+  "idempotency_key": "6c71ad6f-c9e0-40f4-b980-937758b16d3f",
+  "justification": "The user replaced the prior decision.",
+  "key": "architecture.database",
+  "memory_id": "mem_123",
+  "operation": "replace",
+  "scope": {
+    "id": "project_abc",
+    "kind": "project"
+  },
+  "source_ref": "opaque-local-ref"
+}

@@ -1,0 +1,12 @@
+{
+  "id": "mem_123",
+  "key": "architecture.database",
+  "kind": "decision",
+  "lifecycle": "pending",
+  "schema_version": "1",
+  "scope": {
+    "id": "project_abc",
+    "kind": "project"
+  },
+  "version": 1
+}

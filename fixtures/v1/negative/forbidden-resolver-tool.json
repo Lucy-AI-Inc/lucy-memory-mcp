@@ -1,0 +1,12 @@
+{
+  "mcp_tools": [
+    "memory_recall",
+    "memory_propose",
+    "memory_proposal_status",
+    "memory_resolve"
+  ],
+  "public_permissions": [
+    "memory:read",
+    "memory:propose"
+  ]
+}

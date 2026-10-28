@@ -1,0 +1,14 @@
+{
+  "keys": [
+    "architecture.database"
+  ],
+  "kinds": [
+    "decision"
+  ],
+  "limit": 3,
+  "query": "What database is canonical?",
+  "scope": {
+    "id": "project_abc",
+    "kind": "project"
+  }
+}

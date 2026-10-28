@@ -1,0 +1,60 @@
+{
+  "$id": "https://schemas.trylucy.ai/agent-memory/v1/recall-response.schema.json",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "additionalProperties": false,
+  "properties": {
+    "as_of": {
+      "$ref": "https://schemas.trylucy.ai/agent-memory/v1/common.schema.json#/$defs/timestamp"
+    },
+    "consistency": {
+      "const": "canonical_active"
+    },
+    "notices": {
+      "items": {
+        "maxLength": 500,
+        "type": "string"
+      },
+      "maxItems": 20,
+      "type": "array"
+    },
+    "request_id": {
+      "$ref": "https://schemas.trylucy.ai/agent-memory/v1/common.schema.json#/$defs/requestId"
+    },
+    "results": {
+      "items": {
+        "allOf": [
+          {
+            "$ref": "https://schemas.trylucy.ai/agent-memory/v1/memory.schema.json"
+          },
+          {
+            "properties": {
+              "status": {
+                "const": "active"
+              }
+            },
+            "type": "object"
+          }
+        ]
+      },
+      "maxItems": 5,
+      "type": "array"
+    },
+    "schema_version": {
+      "$ref": "https://schemas.trylucy.ai/agent-memory/v1/common.schema.json#/$defs/schemaVersion"
+    },
+    "scope": {
+      "$ref": "https://schemas.trylucy.ai/agent-memory/v1/common.schema.json#/$defs/scope"
+    }
+  },
+  "required": [
+    "schema_version",
+    "request_id",
+    "as_of",
+    "consistency",
+    "scope",
+    "results",
+    "notices"
+  ],
+  "title": "Recall response",
+  "type": "object"
+}

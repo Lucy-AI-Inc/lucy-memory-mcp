@@ -1,0 +1,777 @@
+{
+  "cases": [
+    {
+      "expected_error": {
+        "instance_path": "/scope",
+        "keyword": "additionalProperties",
+        "params": {
+          "additionalProperty": "tenant_id"
+        }
+      },
+      "file": "fixtures/v1/negative/client-supplied-tenant.json",
+      "id": "client-supplied-tenant",
+      "schema": "https://schemas.trylucy.ai/agent-memory/v1/create-proposal-request.schema.json",
+      "valid": false
+    },
+    {
+      "file": "fixtures/v1/positive/contract-document.json",
+      "id": "contract-document",
+      "schema": "https://schemas.trylucy.ai/agent-memory/v1/contract-document.schema.json",
+      "valid": true
+    },
+    {
+      "expected_error": {
+        "instance_path": "",
+        "keyword": "required",
+        "params": {
+          "missingProperty": "key"
+        }
+      },
+      "file": "fixtures/v1/negative/create-missing-key.json",
+      "id": "create-missing-key",
+      "schema": "https://schemas.trylucy.ai/agent-memory/v1/create-proposal-request.schema.json",
+      "valid": false
+    },
+    {
+      "file": "fixtures/v1/positive/create-request.json",
+      "id": "create-request",
+      "schema": "https://schemas.trylucy.ai/agent-memory/v1/create-proposal-request.schema.json",
+      "valid": true
+    },
+    {
+      "expected_error": {
+        "instance_path": "",
+        "keyword": "additionalProperties",
+        "params": {
+          "additionalProperty": "expected_version"
+        }
+      },
+      "file": "fixtures/v1/negative/create-with-expected-version.json",
+      "id": "create-with-expected-version",
+      "schema": "https://schemas.trylucy.ai/agent-memory/v1/create-proposal-request.schema.json",
+      "valid": false
+    },
+    {
+      "expected_error": {
+        "instance_path": "",
+        "keyword": "additionalProperties",
+        "params": {
+          "additionalProperty": "memory_id"
+        }
+      },
+      "file": "fixtures/v1/negative/create-with-memory-id.json",
+      "id": "create-with-memory-id",
+      "schema": "https://schemas.trylucy.ai/agent-memory/v1/create-proposal-request.schema.json",
+      "valid": false
+    },
+    {
+      "file": "fixtures/v1/errors/error-conflict.json",
+      "id": "error-conflict",
+      "schema": "https://schemas.trylucy.ai/agent-memory/v1/error.schema.json",
+      "valid": true
+    },
+    {
+      "file": "fixtures/v1/errors/error-forbidden.json",
+      "id": "error-forbidden",
+      "schema": "https://schemas.trylucy.ai/agent-memory/v1/error.schema.json",
+      "valid": true
+    },
+    {
+      "file": "fixtures/v1/errors/error-invalid-request.json",
+      "id": "error-invalid-request",
+      "schema": "https://schemas.trylucy.ai/agent-memory/v1/error.schema.json",
+      "valid": true
+    },
+    {
+      "file": "fixtures/v1/errors/error-invalid-scope.json",
+      "id": "error-invalid-scope",
+      "schema": "https://schemas.trylucy.ai/agent-memory/v1/error.schema.json",
+      "valid": true
+    },
+    {
+      "file": "fixtures/v1/errors/error-not-found-or-not-visible.json",
+      "id": "error-not-found-or-not-visible",
+      "schema": "https://schemas.trylucy.ai/agent-memory/v1/error.schema.json",
+      "valid": true
+    },
+    {
+      "file": "fixtures/v1/errors/error-payload-too-large.json",
+      "id": "error-payload-too-large",
+      "schema": "https://schemas.trylucy.ai/agent-memory/v1/error.schema.json",
+      "valid": true
+    },
+    {
+      "file": "fixtures/v1/errors/error-rate-limited.json",
+      "id": "error-rate-limited",
+      "schema": "https://schemas.trylucy.ai/agent-memory/v1/error.schema.json",
+      "valid": true
+    },
+    {
+      "file": "fixtures/v1/errors/error-service-unavailable.json",
+      "id": "error-service-unavailable",
+      "schema": "https://schemas.trylucy.ai/agent-memory/v1/error.schema.json",
+      "valid": true
+    },
+    {
+      "file": "fixtures/v1/errors/error-unauthenticated.json",
+      "id": "error-unauthenticated",
+      "schema": "https://schemas.trylucy.ai/agent-memory/v1/error.schema.json",
+      "valid": true
+    },
+    {
+      "file": "fixtures/v1/errors/error-unsupported-version.json",
+      "id": "error-unsupported-version",
+      "schema": "https://schemas.trylucy.ai/agent-memory/v1/error.schema.json",
+      "valid": true
+    },
+    {
+      "file": "fixtures/v1/errors/error-version-conflict.json",
+      "id": "error-version-conflict",
+      "schema": "https://schemas.trylucy.ai/agent-memory/v1/error.schema.json",
+      "valid": true
+    },
+    {
+      "expected_error": {
+        "instance_path": "/mcp_tools",
+        "keyword": "const",
+        "params": {
+          "allowedValue": [
+            "memory_recall",
+            "memory_propose",
+            "memory_proposal_status"
+          ]
+        }
+      },
+      "file": "fixtures/v1/negative/forbidden-approval-tool.json",
+      "id": "forbidden-approval-tool",
+      "schema": "https://schemas.trylucy.ai/agent-memory/v1/public-surface.schema.json",
+      "valid": false
+    },
+    {
+      "expected_error": {
+        "instance_path": "/public_permissions",
+        "keyword": "const",
+        "params": {
+          "allowedValue": [
+            "memory:read",
+            "memory:propose"
+          ]
+        }
+      },
+      "file": "fixtures/v1/negative/forbidden-memory-write-permission.json",
+      "id": "forbidden-memory-write-permission",
+      "schema": "https://schemas.trylucy.ai/agent-memory/v1/public-surface.schema.json",
+      "valid": false
+    },
+    {
+      "expected_error": {
+        "instance_path": "/mcp_tools",
+        "keyword": "const",
+        "params": {
+          "allowedValue": [
+            "memory_recall",
+            "memory_propose",
+            "memory_proposal_status"
+          ]
+        }
+      },
+      "file": "fixtures/v1/negative/forbidden-resolver-tool.json",
+      "id": "forbidden-resolver-tool",
+      "schema": "https://schemas.trylucy.ai/agent-memory/v1/public-surface.schema.json",
+      "valid": false
+    },
+    {
+      "expected_error": {
+        "instance_path": "/idempotency_key",
+        "keyword": "minLength",
+        "params": {
+          "limit": 16
+        }
+      },
+      "file": "fixtures/v1/negative/invalid-idempotency-key.json",
+      "id": "invalid-idempotency-key",
+      "schema": "https://schemas.trylucy.ai/agent-memory/v1/create-proposal-request.schema.json",
+      "valid": false
+    },
+    {
+      "expected_error": {
+        "instance_path": "/key",
+        "keyword": "pattern",
+        "params": {
+          "pattern": "^[a-z](?:[a-z0-9]|[._-](?=[a-z0-9])){0,127}$"
+        }
+      },
+      "file": "fixtures/v1/negative/invalid-key.json",
+      "id": "invalid-key",
+      "schema": "https://schemas.trylucy.ai/agent-memory/v1/create-proposal-request.schema.json",
+      "valid": false
+    },
+    {
+      "expected_error": {
+        "instance_path": "/lifecycle",
+        "keyword": "enum",
+        "params": {
+          "allowedValues": [
+            "active",
+            "superseded",
+            "revoked",
+            "forgotten"
+          ]
+        }
+      },
+      "file": "fixtures/v1/negative/invalid-memory-lifecycle.json",
+      "id": "invalid-memory-lifecycle",
+      "schema": "https://schemas.trylucy.ai/agent-memory/v1/memory-version-state.schema.json",
+      "valid": false
+    },
+    {
+      "expected_error": {
+        "instance_path": "/status",
+        "keyword": "enum",
+        "params": {
+          "allowedValues": [
+            "pending",
+            "approved",
+            "rejected",
+            "expired",
+            "superseded"
+          ]
+        }
+      },
+      "file": "fixtures/v1/negative/invalid-proposal-lifecycle.json",
+      "id": "invalid-proposal-lifecycle",
+      "schema": "https://schemas.trylucy.ai/agent-memory/v1/proposal-status.schema.json",
+      "valid": false
+    },
+    {
+      "expected_error": {
+        "instance_path": "/proposal_version",
+        "keyword": "const",
+        "params": {
+          "allowedValue": 1
+        }
+      },
+      "file": "fixtures/v1/negative/invalid-proposal-version.json",
+      "id": "invalid-proposal-version",
+      "schema": "https://schemas.trylucy.ai/agent-memory/v1/proposal-status.schema.json",
+      "valid": false
+    },
+    {
+      "expected_error": {
+        "instance_path": "/error/retryable",
+        "keyword": "const",
+        "params": {
+          "allowedValue": false
+        }
+      },
+      "file": "fixtures/v1/negative/invalid-retryable-error.json",
+      "id": "invalid-retryable-error",
+      "schema": "https://schemas.trylucy.ai/agent-memory/v1/error.schema.json",
+      "valid": false
+    },
+    {
+      "expected_error": {
+        "instance_path": "/scope",
+        "keyword": "oneOf",
+        "params": {
+          "passingSchemas": null
+        }
+      },
+      "file": "fixtures/v1/negative/invalid-scope.json",
+      "id": "invalid-scope",
+      "schema": "https://schemas.trylucy.ai/agent-memory/v1/create-proposal-request.schema.json",
+      "valid": false
+    },
+    {
+      "expected_error": {
+        "instance_path": "/provenance",
+        "keyword": "required",
+        "params": {
+          "missingProperty": "ref"
+        }
+      },
+      "file": "fixtures/v1/negative/malformed-provenance.json",
+      "id": "malformed-provenance",
+      "schema": "https://schemas.trylucy.ai/agent-memory/v1/receipt.schema.json",
+      "valid": false
+    },
+    {
+      "expected_error": {
+        "instance_path": "",
+        "keyword": "required",
+        "params": {
+          "missingProperty": "authority"
+        }
+      },
+      "file": "fixtures/v1/negative/malformed-receipt.json",
+      "id": "malformed-receipt",
+      "schema": "https://schemas.trylucy.ai/agent-memory/v1/receipt.schema.json",
+      "valid": false
+    },
+    {
+      "file": "fixtures/v1/positive/memory-active.json",
+      "id": "memory-active",
+      "schema": "https://schemas.trylucy.ai/agent-memory/v1/memory.schema.json",
+      "valid": true
+    },
+    {
+      "file": "fixtures/v1/positive/memory-state-active.json",
+      "id": "memory-state-active",
+      "schema": "https://schemas.trylucy.ai/agent-memory/v1/memory-version-state.schema.json",
+      "valid": true
+    },
+    {
+      "file": "fixtures/v1/positive/memory-state-forgotten.json",
+      "id": "memory-state-forgotten",
+      "schema": "https://schemas.trylucy.ai/agent-memory/v1/memory-version-state.schema.json",
+      "valid": true
+    },
+    {
+      "file": "fixtures/v1/positive/memory-state-revoked.json",
+      "id": "memory-state-revoked",
+      "schema": "https://schemas.trylucy.ai/agent-memory/v1/memory-version-state.schema.json",
+      "valid": true
+    },
+    {
+      "file": "fixtures/v1/positive/memory-state-superseded.json",
+      "id": "memory-state-superseded",
+      "schema": "https://schemas.trylucy.ai/agent-memory/v1/memory-version-state.schema.json",
+      "valid": true
+    },
+    {
+      "expected_error": {
+        "instance_path": "",
+        "keyword": "required",
+        "params": {
+          "missingProperty": "scope"
+        }
+      },
+      "file": "fixtures/v1/negative/missing-scope.json",
+      "id": "missing-scope",
+      "schema": "https://schemas.trylucy.ai/agent-memory/v1/create-proposal-request.schema.json",
+      "valid": false
+    },
+    {
+      "expected_error": {
+        "instance_path": "/content",
+        "keyword": "maxLength",
+        "params": {
+          "limit": 2000
+        }
+      },
+      "file": "fixtures/v1/negative/oversized-content.json",
+      "id": "oversized-content",
+      "schema": "https://schemas.trylucy.ai/agent-memory/v1/create-proposal-request.schema.json",
+      "valid": false
+    },
+    {
+      "expected_error": {
+        "instance_path": "/justification",
+        "keyword": "maxLength",
+        "params": {
+          "limit": 500
+        }
+      },
+      "file": "fixtures/v1/negative/oversized-justification.json",
+      "id": "oversized-justification",
+      "schema": "https://schemas.trylucy.ai/agent-memory/v1/create-proposal-request.schema.json",
+      "valid": false
+    },
+    {
+      "expected_error": {
+        "instance_path": "/key",
+        "keyword": "maxLength",
+        "params": {
+          "limit": 128
+        }
+      },
+      "file": "fixtures/v1/negative/oversized-key.json",
+      "id": "oversized-key",
+      "schema": "https://schemas.trylucy.ai/agent-memory/v1/create-proposal-request.schema.json",
+      "valid": false
+    },
+    {
+      "file": "fixtures/v1/positive/proposal-approved.json",
+      "id": "proposal-approved",
+      "schema": "https://schemas.trylucy.ai/agent-memory/v1/proposal-status.schema.json",
+      "valid": true
+    },
+    {
+      "file": "fixtures/v1/positive/proposal-create-approved.json",
+      "id": "proposal-create-approved",
+      "schema": "https://schemas.trylucy.ai/agent-memory/v1/proposal-status.schema.json",
+      "valid": true
+    },
+    {
+      "expected_error": {
+        "instance_path": "/result/memory_version",
+        "keyword": "proposalResultVersion",
+        "params": {}
+      },
+      "file": "fixtures/v1/negative/proposal-create-wrong-result-version.json",
+      "id": "proposal-create-wrong-result-version",
+      "schema": "https://schemas.trylucy.ai/agent-memory/v1/proposal-status.schema.json",
+      "valid": false
+    },
+    {
+      "file": "fixtures/v1/positive/proposal-expired.json",
+      "id": "proposal-expired",
+      "schema": "https://schemas.trylucy.ai/agent-memory/v1/proposal-status.schema.json",
+      "valid": true
+    },
+    {
+      "expected_error": {
+        "instance_path": "/result",
+        "keyword": "type",
+        "params": {
+          "type": "null"
+        }
+      },
+      "file": "fixtures/v1/negative/proposal-expired-with-result.json",
+      "id": "proposal-expired-with-result",
+      "schema": "https://schemas.trylucy.ai/agent-memory/v1/proposal-status.schema.json",
+      "valid": false
+    },
+    {
+      "file": "fixtures/v1/positive/proposal-pending.json",
+      "id": "proposal-pending",
+      "schema": "https://schemas.trylucy.ai/agent-memory/v1/proposal-status.schema.json",
+      "valid": true
+    },
+    {
+      "file": "fixtures/v1/positive/proposal-rejected.json",
+      "id": "proposal-rejected",
+      "schema": "https://schemas.trylucy.ai/agent-memory/v1/proposal-status.schema.json",
+      "valid": true
+    },
+    {
+      "expected_error": {
+        "instance_path": "/result",
+        "keyword": "type",
+        "params": {
+          "type": "null"
+        }
+      },
+      "file": "fixtures/v1/negative/proposal-rejected-with-result.json",
+      "id": "proposal-rejected-with-result",
+      "schema": "https://schemas.trylucy.ai/agent-memory/v1/proposal-status.schema.json",
+      "valid": false
+    },
+    {
+      "expected_error": {
+        "instance_path": "/result/memory_id",
+        "keyword": "proposalResultMemoryId",
+        "params": {}
+      },
+      "file": "fixtures/v1/negative/proposal-replace-wrong-result-id.json",
+      "id": "proposal-replace-wrong-result-id",
+      "schema": "https://schemas.trylucy.ai/agent-memory/v1/proposal-status.schema.json",
+      "valid": false
+    },
+    {
+      "expected_error": {
+        "instance_path": "/result/memory_version",
+        "keyword": "proposalResultVersion",
+        "params": {}
+      },
+      "file": "fixtures/v1/negative/proposal-replace-wrong-result-version.json",
+      "id": "proposal-replace-wrong-result-version",
+      "schema": "https://schemas.trylucy.ai/agent-memory/v1/proposal-status.schema.json",
+      "valid": false
+    },
+    {
+      "file": "fixtures/v1/positive/proposal-superseded.json",
+      "id": "proposal-superseded",
+      "schema": "https://schemas.trylucy.ai/agent-memory/v1/proposal-status.schema.json",
+      "valid": true
+    },
+    {
+      "expected_error": {
+        "instance_path": "/result",
+        "keyword": "type",
+        "params": {
+          "type": "null"
+        }
+      },
+      "file": "fixtures/v1/negative/proposal-superseded-with-result.json",
+      "id": "proposal-superseded-with-result",
+      "schema": "https://schemas.trylucy.ai/agent-memory/v1/proposal-status.schema.json",
+      "valid": false
+    },
+    {
+      "expected_error": {
+        "instance_path": "/decided_at",
+        "keyword": "type",
+        "params": {
+          "type": "string"
+        }
+      },
+      "file": "fixtures/v1/negative/proposal-terminal-null-decided-at.json",
+      "id": "proposal-terminal-null-decided-at",
+      "schema": "https://schemas.trylucy.ai/agent-memory/v1/proposal-status.schema.json",
+      "valid": false
+    },
+    {
+      "file": "fixtures/v1/positive/public-surface.json",
+      "id": "public-surface",
+      "schema": "https://schemas.trylucy.ai/agent-memory/v1/public-surface.schema.json",
+      "valid": true
+    },
+    {
+      "file": "fixtures/v1/positive/recall-request.json",
+      "id": "recall-request",
+      "schema": "https://schemas.trylucy.ai/agent-memory/v1/recall-request.schema.json",
+      "valid": true
+    },
+    {
+      "file": "fixtures/v1/positive/recall-response.json",
+      "id": "recall-response",
+      "schema": "https://schemas.trylucy.ai/agent-memory/v1/recall-response.schema.json",
+      "valid": true
+    },
+    {
+      "expected_error": {
+        "instance_path": "/results/0/scope",
+        "keyword": "recallScope",
+        "params": {}
+      },
+      "file": "fixtures/v1/negative/recall-scope-mismatch.json",
+      "id": "recall-scope-mismatch",
+      "schema": "https://schemas.trylucy.ai/agent-memory/v1/recall-response.schema.json",
+      "valid": false
+    },
+    {
+      "file": "fixtures/v1/positive/receipt-active.json",
+      "id": "receipt-active",
+      "schema": "https://schemas.trylucy.ai/agent-memory/v1/receipt.schema.json",
+      "valid": true
+    },
+    {
+      "file": "fixtures/v1/positive/receipt-forgotten.json",
+      "id": "receipt-forgotten",
+      "schema": "https://schemas.trylucy.ai/agent-memory/v1/receipt.schema.json",
+      "valid": true
+    },
+    {
+      "expected_error": {
+        "instance_path": "/receipt/key",
+        "keyword": "receiptKey",
+        "params": {}
+      },
+      "file": "fixtures/v1/negative/receipt-key-mismatch.json",
+      "id": "receipt-key-mismatch",
+      "schema": "https://schemas.trylucy.ai/agent-memory/v1/memory.schema.json",
+      "valid": false
+    },
+    {
+      "file": "fixtures/v1/positive/receipt-revoked.json",
+      "id": "receipt-revoked",
+      "schema": "https://schemas.trylucy.ai/agent-memory/v1/receipt.schema.json",
+      "valid": true
+    },
+    {
+      "file": "fixtures/v1/positive/receipt-superseded.json",
+      "id": "receipt-superseded",
+      "schema": "https://schemas.trylucy.ai/agent-memory/v1/receipt.schema.json",
+      "valid": true
+    },
+    {
+      "file": "fixtures/v1/positive/receipt-superseding.json",
+      "id": "receipt-superseding",
+      "schema": "https://schemas.trylucy.ai/agent-memory/v1/receipt.schema.json",
+      "valid": true
+    },
+    {
+      "expected_error": {
+        "instance_path": "/receipt/memory_version",
+        "keyword": "receiptVersion",
+        "params": {}
+      },
+      "file": "fixtures/v1/negative/receipt-version-mismatch.json",
+      "id": "receipt-version-mismatch",
+      "schema": "https://schemas.trylucy.ai/agent-memory/v1/memory.schema.json",
+      "valid": false
+    },
+    {
+      "expected_error": {
+        "instance_path": "/proposal/key",
+        "keyword": "stableKey",
+        "params": {}
+      },
+      "file": "fixtures/v1/negative/replace-change-key.json",
+      "id": "replace-change-key",
+      "schema": "https://schemas.trylucy.ai/agent-memory/v1/replace-transition.schema.json",
+      "valid": false
+    },
+    {
+      "expected_error": {
+        "instance_path": "",
+        "keyword": "additionalProperties",
+        "params": {
+          "additionalProperty": "kind"
+        }
+      },
+      "file": "fixtures/v1/negative/replace-change-kind.json",
+      "id": "replace-change-kind",
+      "schema": "https://schemas.trylucy.ai/agent-memory/v1/replace-proposal-request.schema.json",
+      "valid": false
+    },
+    {
+      "expected_error": {
+        "instance_path": "/proposal/scope",
+        "keyword": "stableScope",
+        "params": {}
+      },
+      "file": "fixtures/v1/negative/replace-change-scope.json",
+      "id": "replace-change-scope",
+      "schema": "https://schemas.trylucy.ai/agent-memory/v1/replace-transition.schema.json",
+      "valid": false
+    },
+    {
+      "expected_error": {
+        "instance_path": "/expected_version",
+        "keyword": "minimum",
+        "params": {
+          "comparison": ">=",
+          "limit": 1
+        }
+      },
+      "file": "fixtures/v1/negative/replace-invalid-expected-version.json",
+      "id": "replace-invalid-expected-version",
+      "schema": "https://schemas.trylucy.ai/agent-memory/v1/replace-proposal-request.schema.json",
+      "valid": false
+    },
+    {
+      "expected_error": {
+        "instance_path": "",
+        "keyword": "required",
+        "params": {
+          "missingProperty": "expected_version"
+        }
+      },
+      "file": "fixtures/v1/negative/replace-missing-expected-version.json",
+      "id": "replace-missing-expected-version",
+      "schema": "https://schemas.trylucy.ai/agent-memory/v1/replace-proposal-request.schema.json",
+      "valid": false
+    },
+    {
+      "expected_error": {
+        "instance_path": "",
+        "keyword": "required",
+        "params": {
+          "missingProperty": "memory_id"
+        }
+      },
+      "file": "fixtures/v1/negative/replace-missing-memory-id.json",
+      "id": "replace-missing-memory-id",
+      "schema": "https://schemas.trylucy.ai/agent-memory/v1/replace-proposal-request.schema.json",
+      "valid": false
+    },
+    {
+      "file": "fixtures/v1/positive/replace-request.json",
+      "id": "replace-request",
+      "schema": "https://schemas.trylucy.ai/agent-memory/v1/replace-proposal-request.schema.json",
+      "valid": true
+    },
+    {
+      "file": "fixtures/v1/positive/replace-scope-order-insensitive.json",
+      "id": "replace-scope-order-insensitive",
+      "schema": "https://schemas.trylucy.ai/agent-memory/v1/replace-transition.schema.json",
+      "valid": true
+    },
+    {
+      "file": "fixtures/v1/positive/replace-transition.json",
+      "id": "replace-transition",
+      "schema": "https://schemas.trylucy.ai/agent-memory/v1/replace-transition.schema.json",
+      "valid": true
+    },
+    {
+      "expected_error": {
+        "instance_path": "/current/receipt/memory_version",
+        "keyword": "receiptVersion",
+        "params": {}
+      },
+      "file": "fixtures/v1/negative/replace-transition-receipt-version-mismatch.json",
+      "id": "replace-transition-receipt-version-mismatch",
+      "schema": "https://schemas.trylucy.ai/agent-memory/v1/replace-transition.schema.json",
+      "valid": false
+    },
+    {
+      "file": "fixtures/v1/positive/scope-project.json",
+      "id": "scope-project",
+      "schema": "https://schemas.trylucy.ai/agent-memory/v1/scope.schema.json",
+      "valid": true
+    },
+    {
+      "file": "fixtures/v1/positive/scope-user.json",
+      "id": "scope-user",
+      "schema": "https://schemas.trylucy.ai/agent-memory/v1/scope.schema.json",
+      "valid": true
+    },
+    {
+      "file": "fixtures/v1/positive/scope-workspace.json",
+      "id": "scope-workspace",
+      "schema": "https://schemas.trylucy.ai/agent-memory/v1/scope.schema.json",
+      "valid": true
+    },
+    {
+      "expected_error": {
+        "instance_path": "/authority/type",
+        "keyword": "const",
+        "params": {
+          "allowedValue": "human_approved"
+        }
+      },
+      "file": "fixtures/v1/negative/unknown-authority-type.json",
+      "id": "unknown-authority-type",
+      "schema": "https://schemas.trylucy.ai/agent-memory/v1/receipt.schema.json",
+      "valid": false
+    },
+    {
+      "expected_error": {
+        "instance_path": "/contract_version",
+        "keyword": "const",
+        "params": {
+          "allowedValue": "2026-08-09"
+        }
+      },
+      "file": "fixtures/v1/negative/unknown-contract-version.json",
+      "id": "unknown-contract-version",
+      "schema": "https://schemas.trylucy.ai/agent-memory/v1/contract-document.schema.json",
+      "valid": false
+    },
+    {
+      "expected_error": {
+        "instance_path": "/kind",
+        "keyword": "enum",
+        "params": {
+          "allowedValues": [
+            "fact",
+            "preference",
+            "decision",
+            "rule"
+          ]
+        }
+      },
+      "file": "fixtures/v1/negative/unknown-memory-kind.json",
+      "id": "unknown-memory-kind",
+      "schema": "https://schemas.trylucy.ai/agent-memory/v1/create-proposal-request.schema.json",
+      "valid": false
+    },
+    {
+      "expected_error": {
+        "instance_path": "/schema_version",
+        "keyword": "const",
+        "params": {
+          "allowedValue": "1"
+        }
+      },
+      "file": "fixtures/v1/negative/unknown-schema-version.json",
+      "id": "unknown-schema-version",
+      "schema": "https://schemas.trylucy.ai/agent-memory/v1/memory.schema.json",
+      "valid": false
+    }
+  ],
+  "contract_version": "2026-08-09",
+  "public_schema_version": "1"
+}

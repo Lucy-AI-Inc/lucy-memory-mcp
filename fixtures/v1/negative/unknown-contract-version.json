@@ -1,0 +1,200 @@
+{
+  "contract_name": "Lucy Agent Memory API Contract",
+  "contract_version": "2026-08-10",
+  "create": {
+    "approved_memory_version": 1,
+    "creates_new_memory_id": true,
+    "forbidden": [
+      "memory_id",
+      "expected_version"
+    ],
+    "may_replace_active": false,
+    "required": [
+      "operation",
+      "key",
+      "kind",
+      "scope",
+      "content",
+      "justification",
+      "idempotency_key"
+    ]
+  },
+  "error_codes": [
+    "unauthenticated",
+    "forbidden",
+    "not_found_or_not_visible",
+    "invalid_scope",
+    "invalid_request",
+    "unsupported_version",
+    "conflict",
+    "version_conflict",
+    "rate_limited",
+    "payload_too_large",
+    "service_unavailable",
+    "insufficient_credits",
+    "billing_unavailable"
+  ],
+  "forbidden_mcp_capabilities": [
+    "memory_list",
+    "memory_resolve",
+    "memory_approve",
+    "memory_reject",
+    "memory_delete",
+    "memory_restore"
+  ],
+  "forbidden_public_permissions": [
+    "memory:write",
+    "memory:approve",
+    "memory:resolve",
+    "memory:delete",
+    "memory:restore"
+  ],
+  "forgetting": {
+    "physical_deletion_everywhere_promised": false,
+    "supported_path_promise": "Once Lucy confirms a memory as forgotten, it is immediately ineligible for recall through supported Lucy Agent Memory paths."
+  },
+  "identity": {
+    "account_source": "server-derived",
+    "client_may_supply_account": false,
+    "client_may_supply_tenant": false,
+    "conflict_identity": [
+      "server-derived tenant",
+      "exact scope",
+      "exact key"
+    ],
+    "key_required": true,
+    "maximum_active_per_conflict_identity": 1,
+    "tenant_source": "server-derived"
+  },
+  "limits": {
+    "content_max_bytes": 8192,
+    "content_max_unicode_scalars": 2000,
+    "idempotency_key_max_characters": 128,
+    "idempotency_key_min_characters": 16,
+    "justification_max_bytes": 2048,
+    "justification_max_unicode_scalars": 500,
+    "key_max_characters": 128,
+    "proposal_request_max_bytes": 12288,
+    "recall_keys_maximum": 20,
+    "recall_limit_default": 3,
+    "recall_limit_maximum": 5,
+    "recall_limit_minimum": 1,
+    "recall_query_max_unicode_scalars": 1024,
+    "recall_request_max_bytes": 8192,
+    "recall_response_max_bytes": 65536,
+    "source_ref_max_characters": 256
+  },
+  "mcp_tools": [
+    "memory_recall",
+    "memory_propose",
+    "memory_proposal_status"
+  ],
+  "memory_kinds": [
+    "fact",
+    "preference",
+    "decision",
+    "rule"
+  ],
+  "memory_lifecycle": [
+    "active",
+    "superseded",
+    "revoked",
+    "forgotten"
+  ],
+  "proposal": {
+    "authority": "server-authoritative human approval",
+    "payload_immutable_after_acceptance": true,
+    "proposal_supersession_distinct_from_memory_version_supersession": true,
+    "terminal_states_reopen": false
+  },
+  "proposal_lifecycle": [
+    "pending",
+    "approved",
+    "rejected",
+    "expired",
+    "superseded"
+  ],
+  "proposal_version": 1,
+  "public_permissions": [
+    "memory:read",
+    "memory:propose"
+  ],
+  "public_schema_version": "1",
+  "recall": {
+    "asynchronous_index_is_not_authority": true,
+    "canonical_active_state_rejoin_required": true,
+    "historical_receipt_requires_fresh_recall": true,
+    "normally_recallable_lifecycle": [
+      "active"
+    ]
+  },
+  "receipts": {
+    "authority_types": [
+      "human_approved"
+    ],
+    "required_public_fields": [
+      "schema_version",
+      "id",
+      "memory_id",
+      "memory_version",
+      "key",
+      "kind",
+      "scope",
+      "lifecycle",
+      "authority",
+      "authoritative_at",
+      "issued_at",
+      "provenance",
+      "relations"
+    ],
+    "version_specific": true
+  },
+  "replace": {
+    "expected_version_maximum": 9007199254740990,
+    "expected_version_minimum": 1,
+    "forbidden": [
+      "kind"
+    ],
+    "may_change_key": false,
+    "may_change_kind": false,
+    "may_change_scope": false,
+    "may_create_missing": false,
+    "maximum_memory_version": 9007199254740991,
+    "new_version_rule": "expected_version + 1",
+    "prior_version_transition": "superseded atomically",
+    "required": [
+      "operation",
+      "memory_id",
+      "expected_version",
+      "key",
+      "scope",
+      "content",
+      "justification",
+      "idempotency_key"
+    ],
+    "retains_memory_id": true
+  },
+  "retryable_error_codes": [
+    "rate_limited",
+    "service_unavailable",
+    "billing_unavailable"
+  ],
+  "rule_non_authorities": [
+    "credentials",
+    "OAuth scopes",
+    "access",
+    "approval authority",
+    "tool authority",
+    "spending authority",
+    "policy exemptions",
+    "tenant changes",
+    "project visibility",
+    "deployment authority",
+    "publication authority"
+  ],
+  "scope_kinds": [
+    "user",
+    "workspace",
+    "project"
+  ]
+}

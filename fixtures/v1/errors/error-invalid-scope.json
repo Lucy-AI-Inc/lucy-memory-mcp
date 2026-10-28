@@ -1,0 +1,9 @@
+{
+  "error": {
+    "code": "invalid_scope",
+    "message": "invalid_scope fixture.",
+    "retryable": false
+  },
+  "request_id": "req_invalid-scope",
+  "schema_version": "1"
+}

@@ -1,0 +1,9 @@
+{
+  "error": {
+    "code": "forbidden",
+    "message": "Not retryable.",
+    "retryable": true
+  },
+  "request_id": "req_bad_retry",
+  "schema_version": "1"
+}

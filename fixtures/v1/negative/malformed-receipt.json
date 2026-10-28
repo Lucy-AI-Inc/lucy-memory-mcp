@@ -1,0 +1,20 @@
+{
+  "authoritative_at": "2026-08-09T10:05:00Z",
+  "id": "rcpt_123_v1",
+  "issued_at": "2026-08-09T10:06:00Z",
+  "key": "architecture.database",
+  "kind": "decision",
+  "lifecycle": "active",
+  "memory_id": "mem_123",
+  "memory_version": 1,
+  "provenance": {
+    "ref": "prov_123",
+    "type": "governed_record"
+  },
+  "relations": [],
+  "schema_version": "1",
+  "scope": {
+    "id": "project_abc",
+    "kind": "project"
+  }
+}

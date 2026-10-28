@@ -1,0 +1,110 @@
+name: Publish npm package
+
+# Configure the npm trusted publisher for Lucy-AI-Inc/lucy-memory-mcp,
+# workflow release.yml, and GitHub environment npm. There is no token fallback.
+'on':
+  push:
+    tags:
+      - 'v*'
+
+permissions: {}
+
+concurrency:
+  group: npm-publish-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    permissions:
+      contents: read
+    outputs:
+      tarball: ${{ steps.pack.outputs.tarball }}
+      sha256: ${{ steps.pack.outputs.sha256 }}
+    steps:
+      - name: Check out the tagged commit
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+
+      - name: Set up Node.js
+        uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020
+        with:
+          node-version: '24'
+          cache: npm
+          registry-url: https://registry.npmjs.org
+
+      - name: Validate tag, commit, npm, and public package metadata
+        run: node scripts/verify-release.mjs
+
+      - name: Install the locked dependency graph
+        run: npm ci --ignore-scripts
+
+      - name: Run the release test suite
+        run: npm test
+
+      - name: Validate contracts, schemas, types, hashes, and secrets
+        run: npm run validate && npm run test:types && npm run verify:hashes && npm run scan:secrets
+
+      - name: Audit all dependencies
+        run: npm audit --audit-level=moderate
+
+      - name: Validate package consumers
+        run: npm run test:package
+
+      - name: Check out immutable release source
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+        with:
+          ref: ${{ github.sha }}
+          path: release-source
+          fetch-depth: 1
+          persist-credentials: false
+
+      - name: Build and smoke-test the exact release tarball
+        id: pack
+        working-directory: release-source
+        run: node scripts/prepare-release-tarball.mjs
+
+      - name: Preserve the verified release tarball
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        with:
+          name: npm-package-${{ github.sha }}
+          path: release-source/${{ steps.pack.outputs.tarball }}
+          if-no-files-found: error
+          retention-days: 1
+          compression-level: 0
+
+  publish:
+    needs: verify
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    environment:
+      name: npm
+    permissions:
+      id-token: write
+    steps:
+      - name: Set up Node.js
+        uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020
+        with:
+          node-version: '24'
+          registry-url: https://registry.npmjs.org
+
+      - name: Retrieve the verified release tarball
+        uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093
+        with:
+          name: npm-package-${{ github.sha }}
+          path: release-artifact
+
+      - name: Verify the transferred tarball digest
+        env:
+          EXPECTED_SHA256: ${{ needs.verify.outputs.sha256 }}
+          RELEASE_TARBALL: ${{ needs.verify.outputs.tarball }}
+        run: node --input-type=module --eval "import { createHash } from 'node:crypto'; import { lstatSync, readFileSync } from 'node:fs'; import { basename, resolve } from 'node:path'; if (basename(process.env.RELEASE_TARBALL) !== process.env.RELEASE_TARBALL) process.exit(1); const path = resolve('release-artifact', process.env.RELEASE_TARBALL); if (!lstatSync(path).isFile()) process.exit(1); const actual = createHash('sha256').update(readFileSync(path)).digest('hex'); if (actual !== process.env.EXPECTED_SHA256) process.exit(1); console.log('release digest verified', actual);"
+
+      - name: Publish with npm trusted publishing
+        env:
+          RELEASE_TARBALL: ${{ needs.verify.outputs.tarball }}
+        working-directory: release-artifact
+        run: npm publish "$RELEASE_TARBALL" --provenance --access public --ignore-scripts

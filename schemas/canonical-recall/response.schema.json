@@ -1,0 +1,56 @@
+{
+  "$id": "https://schemas.trylucy.ai/agent-memory/canonical-recall/response.schema.json",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "Canonical recall response",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schema_version", "request_id", "as_of", "consistency", "scope", "results", "notices"],
+  "properties": {
+    "schema_version": { "const": "canonical-recall-1" },
+    "request_id": { "type": "string", "pattern": "^req_[A-Za-z0-9_-]+$", "maxLength": 256 },
+    "as_of": { "$ref": "#/$defs/timestamp" },
+    "consistency": { "const": "canonical_active" },
+    "scope": { "$ref": "#/$defs/scope" },
+    "results": { "type": "array", "maxItems": 5, "items": { "$ref": "#/$defs/result" } },
+    "notices": { "type": "array", "maxItems": 0 }
+  },
+  "$defs": {
+    "timestamp": { "type": "string", "format": "date-time" },
+    "scope": {
+      "oneOf": [
+        { "type": "object", "additionalProperties": false, "required": ["kind"], "properties": { "kind": { "const": "user" } } },
+        { "type": "object", "additionalProperties": false, "required": ["kind"], "properties": { "kind": { "const": "workspace" } } },
+        { "type": "object", "additionalProperties": false, "required": ["kind", "id"], "properties": { "kind": { "const": "project" }, "id": { "type": "string", "pattern": "^project_[A-Za-z0-9_-]+$", "minLength": 1, "maxLength": 128 } } }
+      ]
+    },
+    "provenance": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["type", "record_id", "proposal_id", "canonical_payload_hash", "written_at"],
+      "properties": {
+        "type": { "const": "lucy_canonical" },
+        "record_id": { "type": "string", "minLength": 1, "maxLength": 256 },
+        "proposal_id": { "type": ["string", "null"], "minLength": 1, "maxLength": 256 },
+        "canonical_payload_hash": { "type": ["string", "null"], "pattern": "^[a-fA-F0-9]{64}$" },
+        "written_at": { "$ref": "#/$defs/timestamp" }
+      }
+    },
+    "result": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["record_id", "key", "kind", "scope", "content", "status", "persisted", "approval_status", "version", "provenance"],
+      "properties": {
+        "record_id": { "type": "string", "minLength": 1, "maxLength": 256 },
+        "key": { "type": ["string", "null"], "minLength": 1, "maxLength": 128, "pattern": "^[a-z](?:[a-z0-9]|[._-](?=[a-z0-9])){0,127}$" },
+        "kind": { "type": "string", "minLength": 1, "maxLength": 128 },
+        "scope": { "$ref": "#/$defs/scope" },
+        "content": { "type": "string", "minLength": 1, "maxLength": 8192 },
+        "status": { "const": "active" },
+        "persisted": { "const": true },
+        "approval_status": { "enum": ["user_approved", "approved", "replayed", "controller_approved"] },
+        "version": { "type": ["integer", "null"], "minimum": 1, "maximum": 9007199254740991 },
+        "provenance": { "$ref": "#/$defs/provenance" }
+      }
+    }
+  }
+}

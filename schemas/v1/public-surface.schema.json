@@ -1,0 +1,26 @@
+{
+  "$id": "https://schemas.trylucy.ai/agent-memory/v1/public-surface.schema.json",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "additionalProperties": false,
+  "properties": {
+    "mcp_tools": {
+      "const": [
+        "memory_recall",
+        "memory_propose",
+        "memory_proposal_status"
+      ]
+    },
+    "public_permissions": {
+      "const": [
+        "memory:read",
+        "memory:propose"
+      ]
+    }
+  },
+  "required": [
+    "public_permissions",
+    "mcp_tools"
+  ],
+  "title": "Public permission and MCP surface",
+  "type": "object"
+}

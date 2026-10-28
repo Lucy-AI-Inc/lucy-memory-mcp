@@ -1,0 +1,9 @@
+{
+  "error": {
+    "code": "forbidden",
+    "message": "forbidden fixture.",
+    "retryable": false
+  },
+  "request_id": "req_forbidden",
+  "schema_version": "1"
+}

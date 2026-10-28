@@ -1,0 +1,67 @@
+{
+  "$id": "https://schemas.trylucy.ai/agent-memory/v1/receipt.schema.json",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "additionalProperties": false,
+  "properties": {
+    "authoritative_at": {
+      "$ref": "https://schemas.trylucy.ai/agent-memory/v1/common.schema.json#/$defs/timestamp"
+    },
+    "authority": {
+      "$ref": "https://schemas.trylucy.ai/agent-memory/v1/common.schema.json#/$defs/authority"
+    },
+    "id": {
+      "$ref": "https://schemas.trylucy.ai/agent-memory/v1/common.schema.json#/$defs/receiptId"
+    },
+    "issued_at": {
+      "$ref": "https://schemas.trylucy.ai/agent-memory/v1/common.schema.json#/$defs/timestamp"
+    },
+    "key": {
+      "$ref": "https://schemas.trylucy.ai/agent-memory/v1/common.schema.json#/$defs/key"
+    },
+    "kind": {
+      "$ref": "https://schemas.trylucy.ai/agent-memory/v1/common.schema.json#/$defs/memoryKind"
+    },
+    "lifecycle": {
+      "$ref": "https://schemas.trylucy.ai/agent-memory/v1/common.schema.json#/$defs/memoryLifecycle"
+    },
+    "memory_id": {
+      "$ref": "https://schemas.trylucy.ai/agent-memory/v1/common.schema.json#/$defs/memoryId"
+    },
+    "memory_version": {
+      "$ref": "https://schemas.trylucy.ai/agent-memory/v1/common.schema.json#/$defs/version"
+    },
+    "provenance": {
+      "$ref": "https://schemas.trylucy.ai/agent-memory/v1/common.schema.json#/$defs/provenance"
+    },
+    "relations": {
+      "items": {
+        "$ref": "https://schemas.trylucy.ai/agent-memory/v1/common.schema.json#/$defs/relation"
+      },
+      "maxItems": 20,
+      "type": "array"
+    },
+    "schema_version": {
+      "$ref": "https://schemas.trylucy.ai/agent-memory/v1/common.schema.json#/$defs/schemaVersion"
+    },
+    "scope": {
+      "$ref": "https://schemas.trylucy.ai/agent-memory/v1/common.schema.json#/$defs/scope"
+    }
+  },
+  "required": [
+    "schema_version",
+    "id",
+    "memory_id",
+    "memory_version",
+    "key",
+    "kind",
+    "scope",
+    "lifecycle",
+    "authority",
+    "authoritative_at",
+    "issued_at",
+    "provenance",
+    "relations"
+  ],
+  "title": "Memory authority receipt",
+  "type": "object"
+}

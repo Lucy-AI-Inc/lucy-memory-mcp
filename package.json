@@ -1,0 +1,84 @@
+{
+  "devDependencies": {
+    "@modelcontextprotocol/client": "2.3.1",
+    "@types/node": "26.2.0",
+    "typescript": "7.0.2"
+  },
+  "engines": {
+    "node": ">=20 <25"
+  },
+  "name": "@trylucy/agent-memory",
+  "description": "Official Lucy MCP runtime for governed agent memory. Three tools only: recall, propose, proposal status.",
+  "private": true,
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/Lucy-AI-Inc/lucy-memory-mcp.git"
+  },
+  "homepage": "https://github.com/Lucy-AI-Inc/lucy-memory-mcp",
+  "bugs": {
+    "url": "https://github.com/Lucy-AI-Inc/lucy-memory-mcp/issues"
+  },
+  "keywords": [
+    "lucy",
+    "mcp",
+    "agent-memory",
+    "governed-memory"
+  ],
+  "bin": {
+    "lucy-memory-mcp": "./src/mcp/bin.mjs"
+  },
+  "files": [
+    "src",
+    "schemas",
+    "contracts",
+    "scripts/lib/am01.mjs",
+    "README.md"
+  ],
+  "types": "./src/client/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./src/client/index.d.ts",
+      "import": "./src/client/index.mjs"
+    },
+    "./mcp": {
+      "types": "./src/mcp/index.d.ts",
+      "import": "./src/mcp/server.mjs"
+    },
+    "./mcp/stdio": {
+      "types": "./src/mcp/stdio.d.ts",
+      "import": "./src/mcp/stdio.mjs"
+    },
+    "./provider": {
+      "types": "./src/provider/index.d.ts",
+      "import": "./src/provider/index.mjs"
+    },
+    "./hermes": {
+      "types": "./src/integrations/hermes.d.ts",
+      "import": "./src/integrations/hermes.mjs"
+    }
+  },
+  "scripts": {
+    "hashes": "node scripts/generate-hashes.mjs --write",
+    "test": "node --test",
+    "test:mcp": "node --test tests/mcp/core-mcp-server.test.mjs",
+    "test:e2e": "node --test tests/e2e/wave4-isolated-e2e.test.mjs",
+    "test:package": "node --test tests/package/package-contents.test.mjs",
+    "test:types": "tsc --noEmit -p tests/types/tsconfig.json",
+    "validate": "npm run validate:contract && npm run validate:schemas",
+    "validate:contract": "node scripts/validate-contract.mjs",
+    "validate:schemas": "node scripts/validate-schemas.mjs",
+    "scan:secrets": "node scripts/scan-secrets.mjs",
+    "verify:hashes": "node scripts/generate-hashes.mjs --check"
+  },
+  "type": "module",
+  "version": "0.1.0",
+  "dependencies": {
+    "@modelcontextprotocol/server": "2.3.1",
+    "ajv": "8.20.0",
+    "ajv-formats": "3.0.1",
+    "yaml": "^2.8.3"
+  },
+  "overrides": {
+    "fast-uri": "3.1.9"
+  }
+}

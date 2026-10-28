@@ -1,0 +1,90 @@
+{
+  "$id": "https://schemas.trylucy.ai/agent-memory/v1/error.schema.json",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "additionalProperties": false,
+  "properties": {
+    "error": {
+      "additionalProperties": false,
+      "allOf": [
+        {
+          "if": {
+            "properties": {
+              "code": {
+                "enum": [
+                  "rate_limited",
+                  "service_unavailable",
+                  "billing_unavailable"
+                ]
+              }
+            },
+            "required": [
+              "code"
+            ]
+          },
+          "then": {
+            "properties": {
+              "retryable": {
+                "const": true
+              }
+            },
+            "type": "object"
+          },
+          "else": {
+            "properties": {
+              "retryable": {
+                "const": false
+              }
+            },
+            "type": "object"
+          }
+        }
+      ],
+      "properties": {
+        "code": {
+          "enum": [
+            "unauthenticated",
+            "forbidden",
+            "not_found_or_not_visible",
+            "invalid_scope",
+            "invalid_request",
+            "unsupported_version",
+            "conflict",
+            "version_conflict",
+            "rate_limited",
+            "payload_too_large",
+            "service_unavailable",
+            "insufficient_credits",
+            "billing_unavailable"
+          ]
+        },
+        "message": {
+          "maxLength": 500,
+          "minLength": 1,
+          "type": "string"
+        },
+        "retryable": {
+          "type": "boolean"
+        }
+      },
+      "required": [
+        "code",
+        "message",
+        "retryable"
+      ],
+      "type": "object"
+    },
+    "request_id": {
+      "$ref": "https://schemas.trylucy.ai/agent-memory/v1/common.schema.json#/$defs/requestId"
+    },
+    "schema_version": {
+      "$ref": "https://schemas.trylucy.ai/agent-memory/v1/common.schema.json#/$defs/schemaVersion"
+    }
+  },
+  "required": [
+    "schema_version",
+    "request_id",
+    "error"
+  ],
+  "title": "Public error response",
+  "type": "object"
+}

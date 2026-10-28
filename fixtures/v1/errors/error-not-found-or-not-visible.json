@@ -1,0 +1,9 @@
+{
+  "error": {
+    "code": "not_found_or_not_visible",
+    "message": "not_found_or_not_visible fixture.",
+    "retryable": false
+  },
+  "request_id": "req_not-found-or-not-visible",
+  "schema_version": "1"
+}

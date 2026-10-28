@@ -1,0 +1,9 @@
+{
+  "error": {
+    "code": "invalid_request",
+    "message": "invalid_request fixture.",
+    "retryable": false
+  },
+  "request_id": "req_invalid-request",
+  "schema_version": "1"
+}

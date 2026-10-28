@@ -1,0 +1,27 @@
+{
+  "schema_version": "1",
+  "name": "lucy-agent-manifest",
+  "sentence": "Lucy is where approved facts about you and your work live across agents. Your agent's local memory is only its private notebook.",
+  "tools": ["memory_recall", "memory_propose", "memory_proposal_status"],
+  "permissions": ["memory:read", "memory:propose"],
+  "forbidden": ["memory:write", "memory:resolve", "memory:approve", "memory:delete", "memory:restore"],
+  "laws": [
+    "PROPOSED != SAVED",
+    "EXISTS != RECALLABLE",
+    "Projection != authority",
+    "No silent dual-write",
+    "No local durable fallback"
+  ],
+  "http": [
+    "POST /api/lucy/agent-memory/v1/recall",
+    "POST /api/lucy/agent-memory/v1/proposals",
+    "GET /api/lucy/agent-memory/v1/proposals/{proposal_id}"
+  ],
+  "auto_memory": "Human Lucy policy only. Agent still only proposes.",
+  "local": [
+    "skills",
+    "machine paths",
+    "session transcripts",
+    "temporary state"
+  ]
+}

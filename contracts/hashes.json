@@ -1,0 +1,23 @@
+{
+  "algorithm": "sha256",
+  "contract": {
+    "path": "contracts/agent-memory-api.contract.json",
+    "sha256": "276000c6f803fdcd68cc60feb14d8dd0e471f88f2a0e94c8ad9dc4ff7ce876e4"
+  },
+  "schemas": {
+    "schemas/v1/common.schema.json": "28cb1973d918edf09d6ba87046eb64b19c922155e0c652930fe682c78743f100",
+    "schemas/v1/contract-document.schema.json": "de186049b1571f273b404a590b828efbbbed9b5b601c17d623cdeb69b6ead7cb",
+    "schemas/v1/create-proposal-request.schema.json": "cc0c90de7243f9f1a7040831d0ddaa644d896747c567b79c340fb42a64fc3637",
+    "schemas/v1/error.schema.json": "07dac4fea8be5ce2c09ee2b5924e870d353645ff83fca66bf657018c57b43b23",
+    "schemas/v1/memory-version-state.schema.json": "09353978ddca519bc6238306c466be1ec6994248f04071562537658bac76567c",
+    "schemas/v1/memory.schema.json": "559c992d6041dd49f3a9fcc969f313ffaa318679f44fdac20ecf9a50242bdc29",
+    "schemas/v1/proposal-status.schema.json": "909d901ba9ab2bbcfe39e6b2e41b7828ed957fd1e877cbea2a3155a460804adb",
+    "schemas/v1/public-surface.schema.json": "fd0bda7dfbe4f3b779c79e7b1edc6cfc26ec0bde8709ccf7235eba81b30cce91",
+    "schemas/v1/recall-request.schema.json": "1c696b36e2d20daf329075f58f5ae56a0607c6c5f023665c1c58fdedf4161da6",
+    "schemas/v1/recall-response.schema.json": "51c3fd68cd6157c07766144c2533edbd440eb7621727ea463c88910186c2458f",
+    "schemas/v1/receipt.schema.json": "16b2a739f3c4e175f69b9273f28541b51a5ba303c2f842a095487d773779911f",
+    "schemas/v1/replace-proposal-request.schema.json": "020c1a18017ce68897fae2b1edbe2dcae31bdb4aa1bab0445df137be6a499940",
+    "schemas/v1/replace-transition.schema.json": "333748cc95f4d70d68154c4afc08ea37b203ac16d5af1efec8f15d074527c671",
+    "schemas/v1/scope.schema.json": "45e726ced894b4def15ef8e054c950735766a47c460b502150aae52ccbe2a454"
+  }
+}

@@ -1,0 +1,9 @@
+{
+  "error": {
+    "code": "rate_limited",
+    "message": "rate_limited fixture.",
+    "retryable": true
+  },
+  "request_id": "req_rate-limited",
+  "schema_version": "1"
+}

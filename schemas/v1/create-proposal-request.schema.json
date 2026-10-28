@@ -1,0 +1,42 @@
+{
+  "$id": "https://schemas.trylucy.ai/agent-memory/v1/create-proposal-request.schema.json",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "additionalProperties": false,
+  "properties": {
+    "content": {
+      "$ref": "https://schemas.trylucy.ai/agent-memory/v1/common.schema.json#/$defs/content"
+    },
+    "idempotency_key": {
+      "$ref": "https://schemas.trylucy.ai/agent-memory/v1/common.schema.json#/$defs/idempotencyKey"
+    },
+    "justification": {
+      "$ref": "https://schemas.trylucy.ai/agent-memory/v1/common.schema.json#/$defs/justification"
+    },
+    "key": {
+      "$ref": "https://schemas.trylucy.ai/agent-memory/v1/common.schema.json#/$defs/key"
+    },
+    "kind": {
+      "$ref": "https://schemas.trylucy.ai/agent-memory/v1/common.schema.json#/$defs/memoryKind"
+    },
+    "operation": {
+      "const": "create"
+    },
+    "scope": {
+      "$ref": "https://schemas.trylucy.ai/agent-memory/v1/common.schema.json#/$defs/scope"
+    },
+    "source_ref": {
+      "$ref": "https://schemas.trylucy.ai/agent-memory/v1/common.schema.json#/$defs/sourceRef"
+    }
+  },
+  "required": [
+    "operation",
+    "key",
+    "kind",
+    "scope",
+    "content",
+    "justification",
+    "idempotency_key"
+  ],
+  "title": "Create memory proposal request",
+  "type": "object"
+}

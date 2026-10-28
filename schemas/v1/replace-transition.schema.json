@@ -1,0 +1,19 @@
+{
+  "$id": "https://schemas.trylucy.ai/agent-memory/v1/replace-transition.schema.json",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "additionalProperties": false,
+  "properties": {
+    "current": {
+      "$ref": "https://schemas.trylucy.ai/agent-memory/v1/memory.schema.json"
+    },
+    "proposal": {
+      "$ref": "https://schemas.trylucy.ai/agent-memory/v1/replace-proposal-request.schema.json"
+    }
+  },
+  "required": [
+    "current",
+    "proposal"
+  ],
+  "title": "Replacement transition validation envelope",
+  "type": "object"
+}

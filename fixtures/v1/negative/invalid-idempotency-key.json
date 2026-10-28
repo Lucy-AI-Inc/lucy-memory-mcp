@@ -1,0 +1,13 @@
+{
+  "content": "PostgreSQL is canonical.",
+  "idempotency_key": "short",
+  "justification": "The user finalized this decision.",
+  "key": "architecture.database",
+  "kind": "decision",
+  "operation": "create",
+  "scope": {
+    "id": "project_abc",
+    "kind": "project"
+  },
+  "source_ref": "opaque-local-ref"
+}

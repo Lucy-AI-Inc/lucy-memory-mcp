@@ -1,0 +1,9 @@
+{
+  "error": {
+    "code": "unauthenticated",
+    "message": "unauthenticated fixture.",
+    "retryable": false
+  },
+  "request_id": "req_unauthenticated",
+  "schema_version": "1"
+}

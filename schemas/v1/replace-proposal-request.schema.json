@@ -1,0 +1,46 @@
+{
+  "$id": "https://schemas.trylucy.ai/agent-memory/v1/replace-proposal-request.schema.json",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "additionalProperties": false,
+  "properties": {
+    "content": {
+      "$ref": "https://schemas.trylucy.ai/agent-memory/v1/common.schema.json#/$defs/content"
+    },
+    "expected_version": {
+      "$ref": "https://schemas.trylucy.ai/agent-memory/v1/common.schema.json#/$defs/expectedVersion"
+    },
+    "idempotency_key": {
+      "$ref": "https://schemas.trylucy.ai/agent-memory/v1/common.schema.json#/$defs/idempotencyKey"
+    },
+    "justification": {
+      "$ref": "https://schemas.trylucy.ai/agent-memory/v1/common.schema.json#/$defs/justification"
+    },
+    "key": {
+      "$ref": "https://schemas.trylucy.ai/agent-memory/v1/common.schema.json#/$defs/key"
+    },
+    "memory_id": {
+      "$ref": "https://schemas.trylucy.ai/agent-memory/v1/common.schema.json#/$defs/memoryId"
+    },
+    "operation": {
+      "const": "replace"
+    },
+    "scope": {
+      "$ref": "https://schemas.trylucy.ai/agent-memory/v1/common.schema.json#/$defs/scope"
+    },
+    "source_ref": {
+      "$ref": "https://schemas.trylucy.ai/agent-memory/v1/common.schema.json#/$defs/sourceRef"
+    }
+  },
+  "required": [
+    "operation",
+    "memory_id",
+    "expected_version",
+    "key",
+    "scope",
+    "content",
+    "justification",
+    "idempotency_key"
+  ],
+  "title": "Replace memory proposal request",
+  "type": "object"
+}

@@ -1,0 +1,277 @@
+{
+  "$id": "https://schemas.trylucy.ai/agent-memory/v1/proposal-status.schema.json",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "additionalProperties": false,
+  "allOf": [
+    {
+      "if": {
+        "properties": {
+          "operation": {
+            "const": "create"
+          }
+        }
+      },
+      "then": {
+        "properties": {
+          "requested": {
+            "additionalProperties": false,
+            "properties": {
+              "key": {
+                "$ref": "https://schemas.trylucy.ai/agent-memory/v1/common.schema.json#/$defs/key"
+              },
+              "kind": {
+                "$ref": "https://schemas.trylucy.ai/agent-memory/v1/common.schema.json#/$defs/memoryKind"
+              },
+              "scope": {
+                "$ref": "https://schemas.trylucy.ai/agent-memory/v1/common.schema.json#/$defs/scope"
+              }
+            },
+            "required": [
+              "key",
+              "kind",
+              "scope"
+            ],
+            "type": "object"
+          }
+        }
+      }
+    },
+    {
+      "if": {
+        "properties": {
+          "operation": {
+            "const": "replace"
+          }
+        }
+      },
+      "then": {
+        "properties": {
+          "requested": {
+            "additionalProperties": false,
+            "properties": {
+              "expected_version": {
+                "$ref": "https://schemas.trylucy.ai/agent-memory/v1/common.schema.json#/$defs/expectedVersion"
+              },
+              "key": {
+                "$ref": "https://schemas.trylucy.ai/agent-memory/v1/common.schema.json#/$defs/key"
+              },
+              "kind": {
+                "$ref": "https://schemas.trylucy.ai/agent-memory/v1/common.schema.json#/$defs/memoryKind"
+              },
+              "memory_id": {
+                "$ref": "https://schemas.trylucy.ai/agent-memory/v1/common.schema.json#/$defs/memoryId"
+              },
+              "scope": {
+                "$ref": "https://schemas.trylucy.ai/agent-memory/v1/common.schema.json#/$defs/scope"
+              }
+            },
+            "required": [
+              "memory_id",
+              "expected_version",
+              "key",
+              "kind",
+              "scope"
+            ],
+            "type": "object"
+          }
+        }
+      }
+    },
+    {
+      "if": {
+        "properties": {
+          "status": {
+            "const": "pending"
+          }
+        }
+      },
+      "then": {
+        "properties": {
+          "decided_at": {
+            "type": "null"
+          },
+          "result": {
+            "type": "null"
+          }
+        }
+      }
+    },
+    {
+      "if": {
+        "properties": {
+          "status": {
+            "const": "approved"
+          }
+        }
+      },
+      "then": {
+        "properties": {
+          "decided_at": {
+            "$ref": "https://schemas.trylucy.ai/agent-memory/v1/common.schema.json#/$defs/timestamp"
+          },
+          "result": {
+            "type": "object"
+          }
+        }
+      }
+    },
+    {
+      "if": {
+        "properties": {
+          "status": {
+            "enum": [
+              "rejected",
+              "expired",
+              "superseded"
+            ]
+          }
+        }
+      },
+      "then": {
+        "properties": {
+          "decided_at": {
+            "$ref": "https://schemas.trylucy.ai/agent-memory/v1/common.schema.json#/$defs/timestamp"
+          },
+          "result": {
+            "type": "null"
+          }
+        }
+      }
+    }
+  ],
+  "properties": {
+    "created_at": {
+      "$ref": "https://schemas.trylucy.ai/agent-memory/v1/common.schema.json#/$defs/timestamp"
+    },
+    "decided_at": {
+      "oneOf": [
+        {
+          "$ref": "https://schemas.trylucy.ai/agent-memory/v1/common.schema.json#/$defs/timestamp"
+        },
+        {
+          "type": "null"
+        }
+      ]
+    },
+    "expires_at": {
+      "$ref": "https://schemas.trylucy.ai/agent-memory/v1/common.schema.json#/$defs/timestamp"
+    },
+    "id": {
+      "$ref": "https://schemas.trylucy.ai/agent-memory/v1/common.schema.json#/$defs/proposalId"
+    },
+    "operation": {
+      "enum": [
+        "create",
+        "replace"
+      ]
+    },
+    "proposal_version": {
+      "const": 1
+    },
+    "relations": {
+      "items": false,
+      "maxItems": 0,
+      "type": "array"
+    },
+    "requested": {
+      "oneOf": [
+        {
+          "additionalProperties": false,
+          "properties": {
+            "key": {
+              "$ref": "https://schemas.trylucy.ai/agent-memory/v1/common.schema.json#/$defs/key"
+            },
+            "kind": {
+              "$ref": "https://schemas.trylucy.ai/agent-memory/v1/common.schema.json#/$defs/memoryKind"
+            },
+            "scope": {
+              "$ref": "https://schemas.trylucy.ai/agent-memory/v1/common.schema.json#/$defs/scope"
+            }
+          },
+          "required": [
+            "key",
+            "kind",
+            "scope"
+          ],
+          "type": "object"
+        },
+        {
+          "additionalProperties": false,
+          "properties": {
+            "expected_version": {
+              "$ref": "https://schemas.trylucy.ai/agent-memory/v1/common.schema.json#/$defs/version"
+            },
+            "key": {
+              "$ref": "https://schemas.trylucy.ai/agent-memory/v1/common.schema.json#/$defs/key"
+            },
+            "kind": {
+              "$ref": "https://schemas.trylucy.ai/agent-memory/v1/common.schema.json#/$defs/memoryKind"
+            },
+            "memory_id": {
+              "$ref": "https://schemas.trylucy.ai/agent-memory/v1/common.schema.json#/$defs/memoryId"
+            },
+            "scope": {
+              "$ref": "https://schemas.trylucy.ai/agent-memory/v1/common.schema.json#/$defs/scope"
+            }
+          },
+          "required": [
+            "memory_id",
+            "expected_version",
+            "key",
+            "kind",
+            "scope"
+          ],
+          "type": "object"
+        }
+      ]
+    },
+    "result": {
+      "oneOf": [
+        {
+          "additionalProperties": false,
+          "properties": {
+            "memory_id": {
+              "$ref": "https://schemas.trylucy.ai/agent-memory/v1/common.schema.json#/$defs/memoryId"
+            },
+            "memory_version": {
+              "$ref": "https://schemas.trylucy.ai/agent-memory/v1/common.schema.json#/$defs/version"
+            },
+            "receipt_id": {
+              "$ref": "https://schemas.trylucy.ai/agent-memory/v1/common.schema.json#/$defs/receiptId"
+            }
+          },
+          "required": [
+            "memory_id",
+            "memory_version",
+            "receipt_id"
+          ],
+          "type": "object"
+        },
+        {
+          "type": "null"
+        }
+      ]
+    },
+    "schema_version": {
+      "$ref": "https://schemas.trylucy.ai/agent-memory/v1/common.schema.json#/$defs/schemaVersion"
+    },
+    "status": {
+      "$ref": "https://schemas.trylucy.ai/agent-memory/v1/common.schema.json#/$defs/proposalLifecycle"
+    }
+  },
+  "required": [
+    "schema_version",
+    "id",
+    "proposal_version",
+    "operation",
+    "status",
+    "requested",
+    "relations",
+    "created_at",
+    "expires_at",
+    "decided_at",
+    "result"
+  ],
+  "title": "Proposal status",
+  "type": "object"
+}

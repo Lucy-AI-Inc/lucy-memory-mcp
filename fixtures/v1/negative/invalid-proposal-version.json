@@ -1,0 +1,20 @@
+{
+  "created_at": "2026-08-09T10:00:00Z",
+  "decided_at": null,
+  "expires_at": "2026-08-16T10:00:00Z",
+  "id": "proposal_456",
+  "operation": "create",
+  "proposal_version": 2,
+  "relations": [],
+  "requested": {
+    "key": "architecture.database",
+    "kind": "decision",
+    "scope": {
+      "id": "project_abc",
+      "kind": "project"
+    }
+  },
+  "result": null,
+  "schema_version": "1",
+  "status": "pending"
+}

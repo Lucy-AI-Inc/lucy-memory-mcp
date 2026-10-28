@@ -1,0 +1,192 @@
+{
+  "$defs": {
+    "authority": {
+      "additionalProperties": false,
+      "properties": {
+        "type": {
+          "const": "human_approved"
+        }
+      },
+      "required": [
+        "type"
+      ],
+      "type": "object"
+    },
+    "content": {
+      "maxLength": 2000,
+      "minLength": 1,
+      "type": "string"
+    },
+    "contractVersion": {
+      "const": "2026-08-09"
+    },
+    "idempotencyKey": {
+      "maxLength": 128,
+      "minLength": 16,
+      "pattern": "^[A-Za-z0-9._:-]+$",
+      "type": "string"
+    },
+    "justification": {
+      "maxLength": 500,
+      "minLength": 1,
+      "type": "string"
+    },
+    "key": {
+      "maxLength": 128,
+      "minLength": 1,
+      "pattern": "^[a-z](?:[a-z0-9]|[._-](?=[a-z0-9])){0,127}$",
+      "type": "string"
+    },
+    "memoryId": {
+      "pattern": "^mem_[A-Za-z0-9_-]+$",
+      "type": "string"
+    },
+    "memoryKind": {
+      "enum": [
+        "fact",
+        "preference",
+        "decision",
+        "rule"
+      ]
+    },
+    "memoryLifecycle": {
+      "enum": [
+        "active",
+        "superseded",
+        "revoked",
+        "forgotten"
+      ]
+    },
+    "proposalId": {
+      "pattern": "^proposal_[A-Za-z0-9_-]+$",
+      "type": "string"
+    },
+    "proposalLifecycle": {
+      "enum": [
+        "pending",
+        "approved",
+        "rejected",
+        "expired",
+        "superseded"
+      ]
+    },
+    "provenance": {
+      "additionalProperties": false,
+      "properties": {
+        "ref": {
+          "maxLength": 256,
+          "minLength": 1,
+          "type": "string"
+        },
+        "type": {
+          "const": "governed_record"
+        }
+      },
+      "required": [
+        "type",
+        "ref"
+      ],
+      "type": "object"
+    },
+    "receiptId": {
+      "pattern": "^rcpt_[A-Za-z0-9_-]+$",
+      "type": "string"
+    },
+    "relation": {
+      "additionalProperties": false,
+      "properties": {
+        "memory_id": {
+          "$ref": "#/$defs/memoryId"
+        },
+        "memory_version": {
+          "$ref": "#/$defs/version"
+        },
+        "type": {
+          "const": "supersedes"
+        }
+      },
+      "required": [
+        "type",
+        "memory_id",
+        "memory_version"
+      ],
+      "type": "object"
+    },
+    "requestId": {
+      "pattern": "^req_[A-Za-z0-9_-]+$",
+      "type": "string"
+    },
+    "schemaVersion": {
+      "const": "1"
+    },
+    "scope": {
+      "oneOf": [
+        {
+          "additionalProperties": false,
+          "properties": {
+            "kind": {
+              "const": "user"
+            }
+          },
+          "required": [
+            "kind"
+          ],
+          "type": "object"
+        },
+        {
+          "additionalProperties": false,
+          "properties": {
+            "kind": {
+              "const": "workspace"
+            }
+          },
+          "required": [
+            "kind"
+          ],
+          "type": "object"
+        },
+        {
+          "additionalProperties": false,
+          "properties": {
+            "id": {
+              "maxLength": 128,
+              "minLength": 1,
+              "pattern": "^project_[A-Za-z0-9_-]+$",
+              "type": "string"
+            },
+            "kind": {
+              "const": "project"
+            }
+          },
+          "required": [
+            "kind",
+            "id"
+          ],
+          "type": "object"
+        }
+      ]
+    },
+    "sourceRef": {
+      "maxLength": 256,
+      "minLength": 1,
+      "type": "string"
+    },
+    "timestamp": {
+      "format": "date-time",
+      "type": "string"
+    },
+    "expectedVersion": {
+      "maximum": 9007199254740990,
+      "minimum": 1,
+      "type": "integer"
+    },
+    "version": {
+      "maximum": 9007199254740991,
+      "minimum": 1,
+      "type": "integer"
+    }
+  },
+  "$id": "https://schemas.trylucy.ai/agent-memory/v1/common.schema.json",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "Lucy Agent Memory common definitions"
+}

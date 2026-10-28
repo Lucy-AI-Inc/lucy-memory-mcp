@@ -1,0 +1,9 @@
+{
+  "error": {
+    "code": "conflict",
+    "message": "conflict fixture.",
+    "retryable": false
+  },
+  "request_id": "req_conflict",
+  "schema_version": "1"
+}

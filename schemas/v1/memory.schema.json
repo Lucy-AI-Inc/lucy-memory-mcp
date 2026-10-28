@@ -1,0 +1,47 @@
+{
+  "$id": "https://schemas.trylucy.ai/agent-memory/v1/memory.schema.json",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "additionalProperties": false,
+  "properties": {
+    "content": {
+      "$ref": "https://schemas.trylucy.ai/agent-memory/v1/common.schema.json#/$defs/content"
+    },
+    "id": {
+      "$ref": "https://schemas.trylucy.ai/agent-memory/v1/common.schema.json#/$defs/memoryId"
+    },
+    "key": {
+      "$ref": "https://schemas.trylucy.ai/agent-memory/v1/common.schema.json#/$defs/key"
+    },
+    "kind": {
+      "$ref": "https://schemas.trylucy.ai/agent-memory/v1/common.schema.json#/$defs/memoryKind"
+    },
+    "receipt": {
+      "$ref": "https://schemas.trylucy.ai/agent-memory/v1/receipt.schema.json"
+    },
+    "schema_version": {
+      "$ref": "https://schemas.trylucy.ai/agent-memory/v1/common.schema.json#/$defs/schemaVersion"
+    },
+    "scope": {
+      "$ref": "https://schemas.trylucy.ai/agent-memory/v1/common.schema.json#/$defs/scope"
+    },
+    "status": {
+      "const": "active"
+    },
+    "version": {
+      "$ref": "https://schemas.trylucy.ai/agent-memory/v1/common.schema.json#/$defs/version"
+    }
+  },
+  "required": [
+    "schema_version",
+    "id",
+    "version",
+    "key",
+    "kind",
+    "scope",
+    "content",
+    "status",
+    "receipt"
+  ],
+  "title": "Authoritative memory version",
+  "type": "object"
+}

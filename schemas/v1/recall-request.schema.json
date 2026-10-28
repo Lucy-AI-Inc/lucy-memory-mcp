@@ -1,0 +1,45 @@
+{
+  "$id": "https://schemas.trylucy.ai/agent-memory/v1/recall-request.schema.json",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "additionalProperties": false,
+  "properties": {
+    "keys": {
+      "items": {
+        "$ref": "https://schemas.trylucy.ai/agent-memory/v1/common.schema.json#/$defs/key"
+      },
+      "maxItems": 20,
+      "minItems": 1,
+      "type": "array",
+      "uniqueItems": true
+    },
+    "kinds": {
+      "items": {
+        "$ref": "https://schemas.trylucy.ai/agent-memory/v1/common.schema.json#/$defs/memoryKind"
+      },
+      "maxItems": 4,
+      "minItems": 1,
+      "type": "array",
+      "uniqueItems": true
+    },
+    "limit": {
+      "default": 3,
+      "maximum": 5,
+      "minimum": 1,
+      "type": "integer"
+    },
+    "query": {
+      "maxLength": 1024,
+      "minLength": 1,
+      "type": "string"
+    },
+    "scope": {
+      "$ref": "https://schemas.trylucy.ai/agent-memory/v1/common.schema.json#/$defs/scope"
+    }
+  },
+  "required": [
+    "query",
+    "scope"
+  ],
+  "title": "Recall request",
+  "type": "object"
+}
