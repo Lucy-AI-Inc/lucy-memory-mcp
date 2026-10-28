@@ -58,6 +58,7 @@
     }
   },
   "scripts": {
+    "check:full": "npm test && npm run test:types && npm run validate && npm run verify:hashes && npm run scan:secrets && npm audit --audit-level=moderate && npm pack --dry-run",
     "hashes": "node scripts/generate-hashes.mjs --write",
     "test": "node --test",
     "test:mcp": "node --test tests/mcp/core-mcp-server.test.mjs",

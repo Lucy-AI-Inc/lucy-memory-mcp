@@ -16,18 +16,15 @@ The package does not require a database or resident service for its local test s
 
 ## Verification
 
+Run the same complete check used by pull requests:
+
 ```bash
-npm test
-npm run test:mcp
-npm run test:e2e
-npm run test:types
-npm run test:package
-npm run validate
-npm run verify:hashes
-npm run scan:secrets
-npm audit --audit-level=moderate
-npm pack --dry-run
+npm run check:full
 ```
+
+This includes the full test suite (including MCP, end-to-end, and package-consumer tests), type, contract, schema, hash, secret, dependency audit, and package checks.
+
+CI intentionally runs one Linux job on Node.js 24. Before a release or after risky platform/runtime changes, run `npm run check:full` locally on Windows, macOS, and Linux with Node.js 20, 22, and 24 as applicable. This explicit local matrix replaces paid cross-platform jobs on every change.
 
 On POSIX systems, run permission-sensitive tests with a conventional `0022` umask:
 

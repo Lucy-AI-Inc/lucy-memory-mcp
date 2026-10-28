@@ -171,14 +171,10 @@ Install from the lockfile and run the checks relevant to your change:
 
 ```bash
 npm ci
-npm test
-npm run test:types
-npm run validate
-npm run verify:hashes
-npm run scan:secrets
+npm run check:full
 ```
 
-For focused runtime checks, use `npm run test:mcp` for the real stdio entry point with an isolated transport and `npm run test:e2e` for the local Agent Memory lifecycle fixture.
+For focused runtime checks, use `npm run test:mcp` for the real stdio entry point with an isolated transport and `npm run test:e2e` for the local Agent Memory lifecycle fixture. See the [development guide](docs/development.md) for the local release/risky-change platform matrix.
 
 ## Documentation
 

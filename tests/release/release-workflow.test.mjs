@@ -8,6 +8,8 @@ import { validateNpmVersion, validateReleaseMetadata } from '../../scripts/verif
 const workflowText = readFileSync(new URL('../../.github/workflows/release.yml', import.meta.url), 'utf8');
 const workflow = YAML.parse(workflowText);
 const ciText = readFileSync(new URL('../../.github/workflows/ci.yml', import.meta.url), 'utf8');
+const ci = YAML.parse(ciText);
+const packageJson = JSON.parse(readFileSync(new URL('../../package.json', import.meta.url), 'utf8'));
 
 const publicPackage = {
   name: '@trylucy/agent-memory',
@@ -80,6 +82,22 @@ test('tarball identity and filename are bound to validated package metadata', ()
   }], publicPackage), /unsafe filename/);
 });
 
+test('CI uses one current-Node Linux gate without duplicate branch pushes', () => {
+  assert.deepEqual(ci.on, {
+    pull_request: null,
+    push: { branches: ['main'] },
+  });
+  assert.deepEqual(Object.keys(ci.jobs), ['check']);
+  assert.equal(ci.jobs.check['runs-on'], 'ubuntu-latest');
+  assert.equal(ci.jobs.check.strategy, undefined);
+
+  const setup = ci.jobs.check.steps.find(({ uses }) => uses?.startsWith('actions/setup-node@'));
+  assert.equal(setup.with['node-version'], '24');
+  const commands = ci.jobs.check.steps.filter((step) => step.run).map((step) => step.run);
+  assert.deepEqual(commands, ['npm ci --ignore-scripts', 'npm run check:full']);
+  assert.doesNotMatch(ciText, /macos-latest|windows-latest|matrix:/);
+});
+
 test('release workflow uses a tag-only, gated, least-privilege trusted publish', () => {
   assert.deepEqual(workflow.on, { push: { tags: ['v*'] } });
   assert.deepEqual(workflow.permissions, {});
@@ -122,5 +140,5 @@ test('release workflow uses a tag-only, gated, least-privilege trusted publish',
   assert.match(commands, /EXPECTED_SHA256/);
   assert.match(commands, /npm publish "\$RELEASE_TARBALL" --provenance --access public --ignore-scripts/);
   assert.doesNotMatch(workflowText, /NPM_TOKEN|NODE_AUTH_TOKEN|secrets\./);
-  assert.match(ciText, /npm audit --audit-level=moderate/);
+  assert.match(packageJson.scripts['check:full'], /npm audit --audit-level=moderate/);
 });

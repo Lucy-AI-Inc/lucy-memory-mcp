@@ -6,14 +6,13 @@ import { spawnSync } from 'node:child_process';
 import test from 'node:test';
 
 const npmBin = process.platform === 'win32' ? 'npm.cmd' : 'npm';
-const tscBin = process.platform === 'win32' ? 'tsc.cmd' : 'tsc';
 const root = resolve(import.meta.dirname, '../..');
 
 function run(cmd, args, cwd, extraEnv = {}) {
   return spawnSync(cmd, args, {
     cwd,
     encoding: 'utf8',
-    shell: process.platform === 'win32',
+    shell: process.platform === 'win32' && cmd.endsWith('.cmd'),
     windowsHide: true,
     timeout: 180000,
     env: {
@@ -65,7 +64,7 @@ test('TypeScript consumer compiles public exports from an installed tarball only
     },
     include: ['consumer.ts'],
   }, null, 2));
-  const tsc = resolve(root, 'node_modules', '.bin', tscBin);
-  const compiled = run(tsc, ['-p', 'tsconfig.json'], consumer);
+  const tsc = resolve(root, 'node_modules', 'typescript', 'bin', 'tsc');
+  const compiled = run(process.execPath, [tsc, '-p', 'tsconfig.json'], consumer);
   assert.equal(compiled.status, 0, compiled.stderr || compiled.stdout);
 });
