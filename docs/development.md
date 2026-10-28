@@ -68,7 +68,7 @@ Do not rely on unexported source files from an installed package.
 
 The tag-only release workflow builds and tests a tarball in an unprivileged job, records its SHA-256 digest, and transfers that exact artifact to the protected `npm` environment. The publish job has only OIDC authority and rechecks the digest before using npm trusted publishing with provenance.
 
-Before the first public release, repository owners must select and add the approved license, deliberately set `private` to `false`, protect the `npm` environment, and configure the npm trusted publisher for this repository, `release.yml`, and the `npm` environment. A release tag must exactly match `v<package version>` and point to a commit reachable from `main`.
+Before the first public release, repository owners must deliberately set `private` to `false`, protect the `npm` environment, and configure the npm trusted publisher for this repository, `release.yml`, and the `npm` environment. A release tag must exactly match `v<package version>` and point to a commit reachable from `main`.
 
 ## Contributions
 

@@ -199,3 +199,7 @@ The machine-readable contract is in [contracts/agent-memory-api.contract.json](c
 For setup questions and reproducible bugs, open a [GitHub issue](https://github.com/Lucy-AI-Inc/lucy-memory-mcp/issues). Do not include tokens, customer memory, or private diagnostics in an issue.
 
 For a security concern, follow the private reporting guidance in the repository [security policy](SECURITY.md).
+
+## License
+
+Licensed under the [Apache License, Version 2.0](LICENSE).

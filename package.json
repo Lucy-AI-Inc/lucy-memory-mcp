@@ -9,6 +9,7 @@
   },
   "name": "@trylucy/agent-memory",
   "description": "Official Lucy MCP runtime for governed agent memory. Three tools only: recall, propose, proposal status.",
+  "license": "Apache-2.0",
   "private": true,
   "repository": {
     "type": "git",

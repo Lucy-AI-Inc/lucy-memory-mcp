@@ -60,7 +60,7 @@ test('npm pack dry-run allowlist excludes private governance and development art
   const result = Array.isArray(parsed) ? parsed[0] : parsed;
   const names = result.files.map(({ path }) => path.replaceAll('\\', '/')).sort();
   for (const required of [
-    'README.md', 'package.json', 'src/client/index.mjs', 'src/client/index.d.ts',
+    'LICENSE', 'README.md', 'package.json', 'src/client/index.mjs', 'src/client/index.d.ts',
     'src/mcp/server.mjs', 'src/mcp/index.d.ts', 'src/mcp/stdio.mjs', 'src/mcp/stdio.d.ts', 'src/mcp/bin.mjs',
     'src/client/http-transport.mjs', 'src/client/http-transport.d.ts',
     'src/provider/index.mjs', 'src/integrations/hermes.mjs',
