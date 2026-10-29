@@ -1,5 +1,6 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
+import { Client, InMemoryTransport } from '@modelcontextprotocol/client';
 import { AgentMemoryClient } from '../../src/client/client.mjs';
 import { createLucyHttpTransport } from '../../src/client/http-transport.mjs';
 import { createLucyMemoryMcpServer, LUCY_MEMORY_TOOL_NAMES } from '../../src/mcp/server.mjs';
@@ -17,14 +18,27 @@ test('Wave 4 isolated E2E: MCP client, HTTP transport, AM-01 authority', async (
     token: 'e2e-token',
     permissions: ['memory:read', 'memory:propose'],
   });
-  const listed = { tools: [{ name: 'memory_recall' }, { name: 'memory_propose' }, { name: 'memory_proposal_status' }] };
-  await createLucyMemoryMcpServer({ client });
-  assert.deepEqual(listed.tools.map((tool) => tool.name), [...LUCY_MEMORY_TOOL_NAMES]);
+  const server = await createLucyMemoryMcpServer({ client });
+  const [clientTransport, serverTransport] = InMemoryTransport.createLinkedPair();
+  const mcp = new Client({ name: 'wave4-e2e', version: '1.0.0' });
+  await server.connect(serverTransport);
+  await mcp.connect(clientTransport);
+  t.after(async () => { await mcp.close(); await server.close(); });
 
-  const empty = await client.recall(JSON.stringify({ query: 'name', scope: USER, keys: ['profile.name'] }));
+  const listed = await mcp.listTools();
+  assert.deepEqual(listed.tools.map((tool) => tool.name), [...LUCY_MEMORY_TOOL_NAMES]);
+  const proposalSchema = listed.tools.find((tool) => tool.name === 'memory_propose').inputSchema;
+  assert.equal(proposalSchema.properties.operation.enum.includes('create'), true);
+  assert.equal(proposalSchema.properties.memory_id.$ref, '#/$defs/common/$defs/memoryId');
+  assert.equal(proposalSchema.$defs.common.$defs.memoryId.pattern, '^mem_[A-Za-z0-9_-]+$');
+
+  const emptyResult = await mcp.callTool({
+    name: 'memory_recall', arguments: { query: 'name', scope: USER, keys: ['profile.name'] },
+  });
+  const empty = emptyResult.structuredContent;
   assert.equal(empty.results.length, 0);
 
-  const pending = await client.propose(JSON.stringify({
+  const proposed = await mcp.callTool({ name: 'memory_propose', arguments: {
     operation: 'create',
     key: 'profile.name',
     kind: 'fact',
@@ -32,33 +46,53 @@ test('Wave 4 isolated E2E: MCP client, HTTP transport, AM-01 authority', async (
     content: 'Ada Lovelace',
     justification: 'user stated preferred name',
     idempotency_key: 'e2e-create-key-16ok',
-  }));
+  } });
+  const pending = proposed.structuredContent;
   assert.equal(pending.status, 'pending');
   assert.equal(pending.result, null);
 
-  const stillPending = await client.proposalStatus(JSON.stringify({ proposal_id: pending.id }));
-  assert.equal(stillPending.status, 'pending');
+  const repeated = await mcp.callTool({ name: 'memory_propose', arguments: {
+    operation: 'create', key: 'profile.name', kind: 'fact', scope: USER,
+    content: 'Ada Lovelace', justification: 'user stated preferred name',
+    idempotency_key: 'e2e-create-key-16ok',
+  } });
+  assert.equal(repeated.structuredContent.id, pending.id, 'idempotent retry returns the original proposal');
 
-  const stillEmpty = await client.recall(JSON.stringify({ query: 'name', scope: USER, keys: ['profile.name'] }));
-  assert.equal(stillEmpty.results.length, 0, 'pending is not recallable');
+  const stillPendingResult = await mcp.callTool({
+    name: 'memory_proposal_status', arguments: { proposal_id: pending.id },
+  });
+  assert.equal(stillPendingResult.structuredContent.status, 'pending');
+
+  const stillEmptyResult = await mcp.callTool({
+    name: 'memory_recall', arguments: { query: 'name', scope: USER, keys: ['profile.name'] },
+  });
+  assert.equal(stillEmptyResult.structuredContent.results.length, 0, 'pending is not recallable');
 
   const approved = lucy.approve(pending.id);
   assert.equal(approved.status, 200);
   assert.equal(approved.body.status, 'approved');
 
-  const statusApproved = await client.proposalStatus(JSON.stringify({ proposal_id: pending.id }));
+  const statusApprovedResult = await mcp.callTool({
+    name: 'memory_proposal_status', arguments: { proposal_id: pending.id },
+  });
+  const statusApproved = statusApprovedResult.structuredContent;
   assert.equal(statusApproved.status, 'approved');
   assert.equal(statusApproved.result.memory_version, 1);
 
-  const recalled = await client.recall(JSON.stringify({ query: 'name', scope: USER, keys: ['profile.name'] }));
+  const recalledResult = await mcp.callTool({
+    name: 'memory_recall', arguments: { query: 'name', scope: USER, keys: ['profile.name'] },
+  });
+  assert.equal(recalledResult.isError, undefined, recalledResult.content?.[0]?.text);
+  const recalled = recalledResult.structuredContent;
   assert.equal(recalled.results.length, 1);
   assert.equal(recalled.results[0].content, 'Ada Lovelace');
   assert.equal(recalled.results[0].version, 1);
-  assert.equal(recalled.results[0].receipt.authority.type, 'human_approved');
+  assert.equal(recalled.results[0].approval_status, 'approved');
+  assert.equal(recalled.results[0].provenance.proposal_id, pending.id);
 
   const replacePending = await client.propose(JSON.stringify({
     operation: 'replace',
-    memory_id: recalled.results[0].id,
+    memory_id: recalled.results[0].record_id,
     expected_version: 1,
     key: 'profile.name',
     scope: USER,
@@ -68,24 +102,24 @@ test('Wave 4 isolated E2E: MCP client, HTTP transport, AM-01 authority', async (
   }));
   assert.equal(replacePending.status, 'pending');
 
-  const stillV1 = await client.recall(JSON.stringify({ query: 'name', scope: USER, keys: ['profile.name'] }));
+  const stillV1 = await client.recallCanonical(JSON.stringify({ query: 'name', scope: USER, keys: ['profile.name'] }));
   assert.equal(stillV1.results[0].version, 1);
 
   const replaceApproved = lucy.approve(replacePending.id);
   assert.equal(replaceApproved.status, 200);
   assert.equal(replaceApproved.body.result.memory_version, 2);
-  assert.equal(replaceApproved.body.result.memory_id, recalled.results[0].id);
+  assert.equal(replaceApproved.body.result.memory_id, recalled.results[0].record_id);
 
-  const v2 = await client.recall(JSON.stringify({ query: 'name', scope: USER, keys: ['profile.name'] }));
+  const v2 = await client.recallCanonical(JSON.stringify({ query: 'name', scope: USER, keys: ['profile.name'] }));
   assert.equal(v2.results.length, 1);
   assert.equal(v2.results[0].version, 2);
   assert.equal(v2.results[0].content, 'Ada King');
-  assert.equal(v2.results[0].id, recalled.results[0].id);
-  assert.equal(v2.results[0].receipt.relations[0].type, 'supersedes');
+  assert.equal(v2.results[0].record_id, recalled.results[0].record_id);
+  assert.equal(v2.results[0].provenance.proposal_id, replacePending.id);
 
   const stale = client.propose(JSON.stringify({
     operation: 'replace',
-    memory_id: recalled.results[0].id,
+    memory_id: recalled.results[0].record_id,
     expected_version: 1,
     key: 'profile.name',
     scope: USER,

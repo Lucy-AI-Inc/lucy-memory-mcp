@@ -34,6 +34,7 @@ export function createIsolatedAm01Authority({ token = 'test-token', now = () => 
   const proposals = new Map();
   const active = new Map();
   const idempotency = new Map();
+  const approvedBy = new Map();
 
   function identityKey(scope, key) {
     return `${scope.kind}:${scope.id ?? ''}:${key}`;
@@ -76,10 +77,12 @@ export function createIsolatedAm01Authority({ token = 'test-token', now = () => 
         scope: proposal.requested.scope,
         content: proposal.content,
         status: 'active',
+        proposal_id: proposal.id,
         updated_at: stamp,
       };
       memory.receipt = receipt(memory);
       active.set(memory.id, memory);
+      approvedBy.set(memory.id, proposal.id);
       proposal.status = 'approved';
       proposal.decided_at = stamp;
       proposal.result = { memory_id: memory.id, memory_version: 1, receipt_id: memory.receipt.id };
@@ -101,10 +104,12 @@ export function createIsolatedAm01Authority({ token = 'test-token', now = () => 
       scope: live.scope,
       content: proposal.content,
       status: 'active',
+      proposal_id: proposal.id,
       updated_at: stamp,
     };
     successor.receipt = receipt(successor, [{ type: 'supersedes', memory_id: live.id, memory_version: live.version }]);
     active.set(successor.id, successor);
+    approvedBy.set(successor.id, proposal.id);
     proposal.status = 'approved';
     proposal.decided_at = stamp;
     proposal.result = { memory_id: successor.id, memory_version: successor.version, receipt_id: successor.receipt.id };
@@ -121,25 +126,52 @@ export function createIsolatedAm01Authority({ token = 'test-token', now = () => 
     const url = new URL(req.url, 'http://127.0.0.1');
     if (req.method === 'POST' && url.pathname === `${PREFIX}/recall`) {
       const body = JSON.parse((await readBody(req)) || '{}');
-      const results = [...active.values()].filter((row) => {
+      const canonical = req.headers['x-lucy-memory-projection'] === 'canonical-v1';
+      const rows = [...active.values()].filter((row) => {
         if (row.status !== 'active') return false;
         if (body.scope?.kind && row.scope.kind !== body.scope.kind) return false;
         if (body.scope?.id && row.scope.id !== body.scope.id) return false;
         if (Array.isArray(body.keys) && body.keys.length && !body.keys.includes(row.key)) return false;
         if (Array.isArray(body.kinds) && body.kinds.length && !body.kinds.includes(row.kind)) return false;
         return true;
-      }).slice(0, body.limit ?? 3).map((row) => ({
-        schema_version: '1',
+      }).slice(0, body.limit ?? 3);
+      const results = canonical ? rows.map((row) => ({
+        record_id: row.id,
+        key: row.key,
+        kind: row.kind,
+        scope: row.scope,
+        content: row.content,
+        status: 'active',
+        persisted: true,
+        approval_status: 'approved',
+        version: row.version,
+        provenance: {
+          type: 'lucy_canonical',
+          record_id: row.id,
+          proposal_id: approvedBy.get(row.id),
+          canonical_payload_hash: null,
+          written_at: row.updated_at,
+        },
+      })) : rows.map((row) => ({
+        schema_version: row.schema_version,
         id: row.id,
         version: row.version,
         key: row.key,
         kind: row.kind,
         scope: row.scope,
         content: row.content,
-        status: 'active',
+        status: row.status,
         receipt: row.receipt,
       }));
-      send(res, 200, {
+      send(res, 200, canonical ? {
+        schema_version: 'canonical-recall-1',
+        request_id: requestId,
+        as_of: now(),
+        consistency: 'canonical_active',
+        scope: body.scope,
+        results,
+        notices: [],
+      } : {
         schema_version: '1',
         request_id: requestId,
         as_of: now(),
