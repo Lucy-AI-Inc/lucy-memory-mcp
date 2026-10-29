@@ -214,7 +214,17 @@ test('generic MCP client completes handshake, tools/list, and all three calls th
   const recallTool = listed.tools.find(({ name }) => name === 'memory_recall');
   assert.equal(recallTool.inputSchema.$defs.common.$defs.scope.oneOf[2].properties.id.maxLength, 128);
   assert.equal(recallTool.annotations.idempotentHint, false);
-  assert.equal(listed.tools.find(({ name }) => name === 'memory_propose').annotations.idempotentHint, true);
+  const proposeTool = listed.tools.find(({ name }) => name === 'memory_propose');
+  assert.deepEqual(Object.keys(proposeTool.inputSchema.properties).sort(), [
+    'content', 'expected_version', 'idempotency_key', 'justification', 'key', 'kind',
+    'memory_id', 'operation', 'scope', 'source_ref',
+  ]);
+  assert.deepEqual(proposeTool.inputSchema.properties.operation.enum, ['create', 'replace']);
+  assert.equal(proposeTool.inputSchema.properties.content.$ref, '#/$defs/common/$defs/content');
+  assert.equal(proposeTool.inputSchema.$defs.common.$defs.content.maxLength, 2000);
+  assert.equal(proposeTool.inputSchema.$defs.common.$defs.justification.maxLength, 500);
+  assert.equal(proposeTool.inputSchema.additionalProperties, false);
+  assert.equal(proposeTool.annotations.idempotentHint, true);
   assert.equal(listed.tools.find(({ name }) => name === 'memory_proposal_status').annotations.idempotentHint, false);
 
   const recalled = await client.callTool({ name: 'memory_recall', arguments: recallRequest() });
