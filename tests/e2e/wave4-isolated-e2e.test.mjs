@@ -37,7 +37,6 @@ test('Wave 4 isolated E2E: MCP client, HTTP transport, AM-01 authority', async (
   });
   const empty = emptyResult.structuredContent;
   assert.equal(empty.results.length, 0);
-  assert.equal(empty.results.length, 0);
 
   const proposed = await mcp.callTool({ name: 'memory_propose', arguments: {
     operation: 'create',
