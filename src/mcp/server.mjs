@@ -126,7 +126,7 @@ async function requireClient(client) {
   }
 }
 
-export async function createLucyMemoryMcpServer({ client, name = 'lucy-memory-mcp', version = '0.1.0' } = {}) {
+export async function createLucyMemoryMcpServer({ client, name = 'lucy-memory-mcp', version = '0.1.1' } = {}) {
   const memoryClient = await requireClient(client);
   const server = new Server(
     { name, version },

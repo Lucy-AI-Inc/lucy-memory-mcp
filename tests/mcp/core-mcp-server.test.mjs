@@ -91,6 +91,7 @@ async function harnessForAgentClient(t, agentClient) {
   const client = new Client({ name: 'am03-in-memory-test', version: '1.0.0' });
   await server.connect(serverTransport);
   await client.connect(clientTransport);
+  assert.equal(client.getServerVersion().version, PACKAGE.version);
   t.after(async () => { await client.close(); await server.close(); });
   return client;
 }
