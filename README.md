@@ -55,7 +55,7 @@ Only approved, active memory is recallable. A replacement also remains a proposa
 - a Lucy credential with the permissions you intend to use
 - a Lucy deployment with Agent Memory HTTP v1 enabled
 
-The package is currently marked `private: true` and is not published to the public npm registry. Install and run it from a trusted source checkout:
+Until the first registry release is published, install and run it from a trusted source checkout:
 
 ```bash
 git clone https://github.com/Lucy-AI-Inc/lucy-memory-mcp.git
@@ -64,7 +64,7 @@ npm ci
 npm run test:mcp
 ```
 
-The declared Node.js range is `>=20 <25`; automated CI covers Node.js 20 and 22.
+The declared Node.js range is `>=20 <25`; automated CI covers Node.js 24.
 
 The MCP server is a stdio process launched by an MCP host. From a source checkout, its entry point is:
 
