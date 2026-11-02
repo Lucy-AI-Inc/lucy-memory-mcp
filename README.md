@@ -187,6 +187,7 @@ For focused runtime checks, use `npm run test:mcp` for the real stdio entry poin
 | HTTP transport and retry behavior | [HTTP API and transport](docs/http-api.md) |
 | JavaScript and TypeScript API | [SDK reference](docs/sdk.md) |
 | Memory-first provider | [Provider guide](docs/provider.md) |
+| Optional agent guidance | [Lucy memory-first skill](.github/skills/lucy-memory-first/SKILL.md) — disable per conversation with “disable Lucy memory” or “stop using Lucy memory” |
 | Hermes integration | [Hermes guide](docs/hermes.md) |
 | Security and privacy | [Security model](docs/security.md) |
 | Common failures | [Troubleshooting](docs/troubleshooting.md) |
