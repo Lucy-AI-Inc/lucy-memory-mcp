@@ -55,7 +55,7 @@ test('recall uses deterministic transport-neutral operation with authentication'
   assert.equal('url' in wire.calls[0], false);
 });
 
-test('canonical recall uses its strict projection operation and rejects downgraded or incoherent results', async () => {
+test('canonical recall uses its strict projection operation and rejects structurally incoherent results', async () => {
   const wire = capture(canonicalRecall());
   const client = makeClient(wire.transport);
   const request = requestJson({ scope: USER, query: 'Ada', keys: ['profile.name'], kinds: ['fact'], limit: 1 });
@@ -66,7 +66,12 @@ test('canonical recall uses its strict projection operation and rejects downgrad
   await assert.rejects(makeClient(async () => reply({ ...canonicalRecall(), unexpected: true })).recallCanonical(request), MalformedResponseError);
   await assert.rejects(makeClient(async () => reply((({ notices, ...body }) => body)(canonicalRecall()))).recallCanonical(request), MalformedResponseError);
   await assert.rejects(makeClient(async () => reply({ ...canonicalRecall(), results: [{ ...canonicalRecall().results[0], provenance: { ...canonicalRecall().results[0].provenance, record_id: 'other' } }] })).recallCanonical(request), MalformedResponseError);
-  await assert.rejects(makeClient(async () => reply({ ...canonicalRecall(), results: [{ ...canonicalRecall().results[0], content: 'Grace' }] })).recallCanonical(request), MalformedResponseError);
+});
+
+test('canonical recall accepts backend-ranked semantic matches', async () => {
+  const response = { ...canonicalRecall(), results: [{ ...canonicalRecall().results[0], content: 'The user likes coconut icecream.' }] };
+  const request = requestJson({ scope: USER, query: 'favorite frozen dessert', keys: ['profile.name'], kinds: ['fact'], limit: 1 });
+  assert.deepEqual(await makeClient(async () => reply(response)).recallCanonical(request), response);
 });
 
 test('canonical recall defaults an omitted limit to the contract value of 3', async () => {

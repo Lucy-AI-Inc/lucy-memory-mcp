@@ -11,10 +11,6 @@ addFormats(ajv);
 const validate = ajv.compile(schema);
 
 function matchesScope(left, right) { return left?.kind === right?.kind && left?.id === right?.id; }
-function includesQuery(result, query) {
-  const needle = query.toLowerCase();
-  return result.content.toLowerCase().includes(needle) || (result.key !== null && result.key.toLowerCase().includes(needle));
-}
 
 export function canonicalRecallOutputSchema() { return structuredClone(schema); }
 
@@ -36,7 +32,6 @@ export function validateCanonicalRecallResponse(value, request) {
     if (request.kinds && !request.kinds.includes(result.kind)) {
       throw new MalformedResponseError('Canonical recall response violates the requested kind filter.');
     }
-    if (!includesQuery(result, request.query)) throw new MalformedResponseError('Canonical recall response does not match the requested query.');
   }
   return value;
 }
