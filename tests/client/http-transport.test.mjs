@@ -130,8 +130,12 @@ test('HTTP transport does not auto-retry recall after 503', async () => {
   assert.equal(n, 1);
 });
 
-test('HTTP transport sends canonical recall once to the existing recall URL with the exact projection header', async () => {
+test('HTTP transport preserves natural-language canonical recall queries and sends the exact projection header', async () => {
   const calls = [];
+  const queries = [
+    "What is Brian's favorite topping on pizza?",
+    "When is Brian's mother's birthday?",
+  ];
   const transport = createLucyHttpTransport({
     baseUrl: 'https://example.test', maxRetries: 2,
     sleep: async () => { throw new Error('canonical recall must not retry'); },
@@ -141,11 +145,16 @@ test('HTTP transport sends canonical recall once to the existing recall URL with
     },
   });
   const client = new AgentMemoryClient({ transport, token: 'tok', permissions: ['memory:read'] });
-  await client.recallCanonical(JSON.stringify({ query: 'Ada', scope: USER }));
-  assert.equal(calls.length, 1);
-  assert.equal(calls[0].url, 'https://example.test/api/lucy/agent-memory/v1/recall');
-  assert.equal(calls[0].init.method, 'POST');
-  assert.equal(calls[0].init.headers['x-lucy-memory-projection'], 'canonical-v1');
+  for (const query of queries) {
+    await client.recallCanonical(JSON.stringify({ query, scope: USER }));
+  }
+  assert.equal(calls.length, queries.length);
+  for (const [index, call] of calls.entries()) {
+    assert.equal(call.url, 'https://example.test/api/lucy/agent-memory/v1/recall');
+    assert.equal(call.init.method, 'POST');
+    assert.equal(JSON.parse(call.init.body).query, queries[index]);
+    assert.equal(call.init.headers['x-lucy-memory-projection'], 'canonical-v1');
+  }
 });
 
 test('HTTP transport does not retry or downgrade canonical recall after 503', async () => {
