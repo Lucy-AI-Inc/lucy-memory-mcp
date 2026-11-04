@@ -80,7 +80,7 @@ const result = await provider.afterEvent({
     kind: 'decision',
     content: 'PostgreSQL is canonical.',
     justification: 'Approved in architecture review.',
-    idempotency_key: 'arch-db-20260824-0001',
+    idempotency_key: '123e4567-e89b-42d3-a456-426614174001',
   },
 });
 ```
@@ -111,7 +111,7 @@ const result = await provider.afterEvent({
     key: 'architecture.database',
     content: 'PostgreSQL 18 is canonical.',
     justification: 'Approved replacement.',
-    idempotency_key: 'arch-db-20260824-0002',
+    idempotency_key: '123e4567-e89b-42d3-a456-426614174002',
   },
 });
 ```

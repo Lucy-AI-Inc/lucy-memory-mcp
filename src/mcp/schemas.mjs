@@ -66,20 +66,17 @@ function deepFreeze(value) {
 }
 
 const proposalDefinitions = definitionsFor(['create-proposal-request', 'replace-proposal-request']);
-const createProposal = proposalDefinitions['create-proposal-request'];
-const replaceProposal = proposalDefinitions['replace-proposal-request'];
+const proposalBranch = (name) => {
+  const schema = structuredClone(proposalDefinitions[name]);
+  delete schema.$defs;
+  return schema;
+};
 const statusDefinitions = definitionsFor(['common']);
 export const MCP_SCHEMAS = deepFreeze({
   recallInput: bundled('recall-request'),
   proposalInput: {
     type: 'object',
-    additionalProperties: false,
-    properties: {
-      ...createProposal.properties,
-      ...replaceProposal.properties,
-      operation: { enum: ['create', 'replace'] },
-    },
-    oneOf: [{ $ref: '#/$defs/create-proposal-request' }, { $ref: '#/$defs/replace-proposal-request' }],
+    oneOf: [proposalBranch('create-proposal-request'), proposalBranch('replace-proposal-request')],
     $defs: proposalDefinitions,
   },
   proposalStatusInput: {

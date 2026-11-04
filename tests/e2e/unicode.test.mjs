@@ -15,7 +15,7 @@ test('Unicode memory content survives propose, approve, and recall', async (t) =
   const content = 'Ada \u2665 Lovelace \u2014 \u042e\u043d\u0438\u043a\u043e\u0434';
   const pending = await client.propose(JSON.stringify({
     operation: 'create', key: 'profile.unicode', kind: 'fact', scope: { kind: 'user' },
-    content, justification: 'unicode', idempotency_key: 'unicode-key-16okayx',
+    content, justification: 'unicode', idempotency_key: '9c6bd1a2-ab63-51b7-82fc-1426492c5618',
   }));
   lucy.approve(pending.id);
   const recalled = await client.recall(JSON.stringify({

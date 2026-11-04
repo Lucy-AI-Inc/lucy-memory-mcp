@@ -52,7 +52,7 @@ const proposal = await client.propose(JSON.stringify({
   scope: { kind: 'project', id: 'project_example' },
   content: 'PostgreSQL is the approved database.',
   justification: 'Approved in architecture review.',
-  idempotency_key: 'architecture-database-2026-01',
+  idempotency_key: '123e4567-e89b-42d3-a456-426614174001',
 }));
 ```
 

@@ -90,8 +90,7 @@
       "const": {
         "content_max_bytes": 8192,
         "content_max_unicode_scalars": 2000,
-        "idempotency_key_max_characters": 128,
-        "idempotency_key_min_characters": 16,
+        "idempotency_key_format": "uuid",
         "justification_max_bytes": 2048,
         "justification_max_unicode_scalars": 500,
         "key_max_characters": 128,

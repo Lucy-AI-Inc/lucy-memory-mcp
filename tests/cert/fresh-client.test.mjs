@@ -49,7 +49,7 @@ test('fresh client: propose pending, approve, recall, conflict, reconnect idempo
   });
   const pending = await client.propose(JSON.stringify({
     operation: 'create', key: 'project.rule', kind: 'rule', scope: USER,
-    content: 'Always cite Lucy IDs', justification: 'team rule', idempotency_key: 'fresh-cert-key-16ok',
+    content: 'Always cite Lucy IDs', justification: 'team rule', idempotency_key: '4213e576-1f28-5fa1-a966-ec7518833eab',
   }));
   assert.equal(pending.status, 'pending');
   assert.equal((await client.recall(JSON.stringify({ query: 'rule', scope: USER, keys: ['project.rule'] }))).results.length, 0);
@@ -58,7 +58,7 @@ test('fresh client: propose pending, approve, recall, conflict, reconnect idempo
   assert.equal(recalled.results[0].content, 'Always cite Lucy IDs');
   const replay = await client.propose(JSON.stringify({
     operation: 'create', key: 'project.rule', kind: 'rule', scope: USER,
-    content: 'Always cite Lucy IDs', justification: 'team rule', idempotency_key: 'fresh-cert-key-16ok',
+    content: 'Always cite Lucy IDs', justification: 'team rule', idempotency_key: '4213e576-1f28-5fa1-a966-ec7518833eab',
   }));
   assert.equal(replay.id, pending.id);
   const dir = mkdtempSync(join(tmpdir(), 'fresh-proj-'));

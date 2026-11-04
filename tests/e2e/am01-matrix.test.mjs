@@ -35,7 +35,7 @@ test('AM-01 scopes and kinds: pending is not recallable; approve then recall', a
         scope,
         content: `${kind} in ${scope.kind}`,
         justification: 'matrix',
-        idempotency_key: `matrix-key-${String(n).padStart(8, '0')}`,
+        idempotency_key: `00000000-0000-4000-8000-${String(n).padStart(12, '0')}`,
       }));
       assert.equal(pending.status, 'pending');
       const hidden = await client.recall(JSON.stringify({ query: kind, scope, keys: [key] }));
@@ -54,7 +54,7 @@ test('AM-01 replace increments version and stale expected_version conflicts', as
   const scope = { kind: 'user' };
   const created = await client.propose(JSON.stringify({
     operation: 'create', key: 'matrix.replace', kind: 'rule', scope,
-    content: 'v1', justification: 'create', idempotency_key: 'replace-create-16okxx',
+    content: 'v1', justification: 'create', idempotency_key: '825daa10-fa55-566a-b8f6-289f66b569a6',
   }));
   lucy.approve(created.id);
   const v1 = await client.recall(JSON.stringify({ query: 'v1', scope, keys: ['matrix.replace'] }));
@@ -62,7 +62,7 @@ test('AM-01 replace increments version and stale expected_version conflicts', as
   const replaced = await client.propose(JSON.stringify({
     operation: 'replace', memory_id: memoryId, expected_version: 1,
     key: 'matrix.replace', scope,
-    content: 'v2', justification: 'replace', idempotency_key: 'replace-update-16okxx',
+    content: 'v2', justification: 'replace', idempotency_key: 'cf67d9ee-91fa-51e3-9268-2a7177b25a27',
   }));
   lucy.approve(replaced.id);
   const v2 = await client.recall(JSON.stringify({ query: 'v2', scope, keys: ['matrix.replace'] }));
@@ -70,7 +70,7 @@ test('AM-01 replace increments version and stale expected_version conflicts', as
   const stale = await client.propose(JSON.stringify({
     operation: 'replace', memory_id: memoryId, expected_version: 1,
     key: 'matrix.replace', scope,
-    content: 'stale', justification: 'stale', idempotency_key: 'replace-stale-16okxxx',
+    content: 'stale', justification: 'stale', idempotency_key: '98570058-6bf3-57f6-9b73-3ae4c4ae7856',
   }));
   assert.equal(stale.status, 'pending');
   const staleApprove = lucy.approve(stale.id);
