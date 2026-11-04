@@ -2,11 +2,11 @@
   "algorithm": "sha256",
   "contract": {
     "path": "contracts/agent-memory-api.contract.json",
-    "sha256": "276000c6f803fdcd68cc60feb14d8dd0e471f88f2a0e94c8ad9dc4ff7ce876e4"
+    "sha256": "aa16ca4d91536f029e19084fce43510e7c44dc2ccb4aebd7c3f27900a6073584"
   },
   "schemas": {
-    "schemas/v1/common.schema.json": "28cb1973d918edf09d6ba87046eb64b19c922155e0c652930fe682c78743f100",
-    "schemas/v1/contract-document.schema.json": "de186049b1571f273b404a590b828efbbbed9b5b601c17d623cdeb69b6ead7cb",
+    "schemas/v1/common.schema.json": "04934ec2ccbb6742c8bb3b0c787574788810a1f52b90689f1da757c58b16fe1c",
+    "schemas/v1/contract-document.schema.json": "526ada10476ca31d6faf91841b39dab2fa4293e6a7a3e93b15c769de52b37b4c",
     "schemas/v1/create-proposal-request.schema.json": "cc0c90de7243f9f1a7040831d0ddaa644d896747c567b79c340fb42a64fc3637",
     "schemas/v1/error.schema.json": "07dac4fea8be5ce2c09ee2b5924e870d353645ff83fca66bf657018c57b43b23",
     "schemas/v1/memory-version-state.schema.json": "09353978ddca519bc6238306c466be1ec6994248f04071562537658bac76567c",

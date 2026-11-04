@@ -32,7 +32,7 @@ const canonicalRecallResults = (count, scope = USER) => {
     }),
   };
 };
-const create = () => ({ operation: 'create', key: 'profile.name', kind: 'fact', scope: USER, content: 'Ada', justification: 'User stated this.', idempotency_key: 'idem_123456789012' });
+const create = () => ({ operation: 'create', key: 'profile.name', kind: 'fact', scope: USER, content: 'Ada', justification: 'User stated this.', idempotency_key: '123e4567-e89b-42d3-a456-426614174000' });
 const requestJson = stableSerialize;
 function makeClient(transport, options = {}) {
   return new AgentMemoryClient({ transport, token: 'secret-token', permissions: ['memory:read', 'memory:propose'], ...options });
@@ -117,6 +117,11 @@ test('rejects invalid scope, key, kind, and tenant authority before transport', 
   await assert.rejects(client.recall(requestJson({ scope: { kind: 'tenant' }, query: 'x' })), InvalidScopeError);
   await assert.rejects(client.recall(requestJson({ scope: USER, query: 'x', keys: ['Bad Key'] })), InvalidKeyError);
   await assert.rejects(client.propose(requestJson({ ...create(), kind: 'credential' })), InvalidKindError);
+  await assert.rejects(client.propose(requestJson({ ...create(), scope: 'user' })), InvalidScopeError);
+  await assert.rejects(
+    client.propose(requestJson({ ...create(), idempotency_key: 'not-a-uuid-but-long-enough' })),
+    (error) => error instanceof ValidationFailureError && error.message === 'idempotency_key must be a UUID.',
+  );
   await assert.rejects(client.recall(requestJson({ scope: USER, query: 'x', tenant_id: 'tenant_1' })), ValidationFailureError);
   assert.equal(calls, 0);
 });
@@ -261,7 +266,7 @@ test('transport failures redact raw causes and credentials', async () => {
 test('enforces proposal request and recall response byte limits', async () => {
   let called = false;
   const client = makeClient(async () => { called = true; return reply(recall()); });
-  const oversized = { operation: 'replace', memory_id: `mem_${'a'.repeat(3000)}`, expected_version: 1, key: `a${'b'.repeat(127)}`, scope: { kind: 'project', id: `project_${'a'.repeat(120)}` }, content: '😀'.repeat(2000), justification: '😀'.repeat(500), idempotency_key: 'x'.repeat(128), source_ref: '😀'.repeat(256) };
+  const oversized = { operation: 'replace', memory_id: `mem_${'a'.repeat(3000)}`, expected_version: 1, key: `a${'b'.repeat(127)}`, scope: { kind: 'project', id: `project_${'a'.repeat(120)}` }, content: '😀'.repeat(2000), justification: '😀'.repeat(500), idempotency_key: '703e34b8-4498-557f-81d0-06e6fa547411'.repeat(128), source_ref: '😀'.repeat(256) };
   assert.ok(Buffer.byteLength(stableSerialize(oversized)) > 12288);
   await assert.rejects(client.propose(requestJson(oversized)), ValidationFailureError);
   assert.equal(called, false);

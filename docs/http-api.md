@@ -111,7 +111,7 @@ Defaults:
 
 If the header is missing or invalid, the transport does not invent a delay. Valid delays are capped at 60000 ms, and retry waits stop immediately when the request `AbortSignal` is aborted.
 
-Retries do not replace idempotency. Every durable proposal still needs a valid `idempotency_key`.
+Retries do not replace idempotency. Every durable proposal still needs a UUID `idempotency_key`.
 
 ## Timeout and abort
 

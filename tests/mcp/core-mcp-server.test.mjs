@@ -29,7 +29,7 @@ const FROZEN_TOOL_NAMES = Object.freeze([
 const recallRequest = () => ({ query: 'profile', scope: USER });
 const proposeRequest = () => ({
   operation: 'create', key: 'profile.name', kind: 'fact', scope: USER, content: 'Ada',
-  justification: 'User stated this.', idempotency_key: 'idem_123456789012',
+  justification: 'User stated this.', idempotency_key: '123e4567-e89b-42d3-a456-426614174000',
 });
 function stdioBinTransport() {
   const serverEntry = new URL('../../src/mcp/bin.mjs', import.meta.url);
@@ -57,8 +57,11 @@ async function assertFrozenLucyToolSurface(client) {
   assert.equal(recalled.structuredContent.consistency, 'canonical_active');
   const proposed = await client.callTool({ name: 'memory_propose', arguments: proposeRequest() });
   assert.equal(proposed.isError, undefined);
+  assert.equal(proposed.content.length, 1);
+  assert.equal(proposed.content[0].type, 'text');
   assert.equal(proposed.structuredContent.status, 'pending');
   assert.equal('saved' in proposed.structuredContent, false);
+  assert.equal(JSON.parse(proposed.content[0].text).id, proposed.structuredContent.id);
   const status = await client.callTool({ name: 'memory_proposal_status', arguments: { proposal_id: 'proposal_test' } });
   assert.equal(status.isError, undefined);
   assert.equal(status.structuredContent.id, 'proposal_test');
@@ -216,15 +219,26 @@ test('generic MCP client completes handshake, tools/list, and all three calls th
   assert.equal(recallTool.inputSchema.$defs.common.$defs.scope.oneOf[2].properties.id.maxLength, 128);
   assert.equal(recallTool.annotations.idempotentHint, false);
   const proposeTool = listed.tools.find(({ name }) => name === 'memory_propose');
-  assert.deepEqual(Object.keys(proposeTool.inputSchema.properties).sort(), [
-    'content', 'expected_version', 'idempotency_key', 'justification', 'key', 'kind',
-    'memory_id', 'operation', 'scope', 'source_ref',
+  assert.equal(proposeTool.inputSchema.oneOf.length, 2);
+  const [createBranch, replaceBranch] = proposeTool.inputSchema.oneOf;
+  assert.equal(createBranch.properties.operation.const, 'create');
+  assert.equal(replaceBranch.properties.operation.const, 'replace');
+  assert.deepEqual(createBranch.required.sort(), [
+    'content', 'idempotency_key', 'justification', 'key', 'kind', 'operation', 'scope',
   ]);
-  assert.deepEqual(proposeTool.inputSchema.properties.operation.enum, ['create', 'replace']);
-  assert.equal(proposeTool.inputSchema.properties.content.$ref, '#/$defs/common/$defs/content');
+  assert.deepEqual(replaceBranch.required.sort(), [
+    'content', 'expected_version', 'idempotency_key', 'justification', 'key', 'memory_id', 'operation', 'scope',
+  ]);
+  assert.equal(createBranch.additionalProperties, false);
+  assert.equal(replaceBranch.additionalProperties, false);
+  assert.equal(createBranch.properties.content.$ref, '#/$defs/common/$defs/content');
+  assert.equal(createBranch.properties.idempotency_key.$ref, '#/$defs/common/$defs/idempotencyKey');
   assert.equal(proposeTool.inputSchema.$defs.common.$defs.content.maxLength, 2000);
   assert.equal(proposeTool.inputSchema.$defs.common.$defs.justification.maxLength, 500);
-  assert.equal(proposeTool.inputSchema.additionalProperties, false);
+  assert.equal(proposeTool.inputSchema.$defs.common.$defs.idempotencyKey.format, 'uuid');
+  const scopes = proposeTool.inputSchema.$defs.common.$defs.scope.oneOf;
+  assert.deepEqual(scopes.map(({ properties }) => properties.kind.const), ['user', 'workspace', 'project']);
+  assert.deepEqual(scopes[0].required, ['kind']);
   assert.equal(proposeTool.annotations.idempotentHint, true);
   assert.equal(listed.tools.find(({ name }) => name === 'memory_proposal_status').annotations.idempotentHint, false);
 

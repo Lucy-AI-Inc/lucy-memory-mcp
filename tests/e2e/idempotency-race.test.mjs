@@ -8,7 +8,7 @@ import { listenIsolatedAm01 } from '../e2e/isolated-am01-authority.mjs';
 const USER = { kind: 'user' };
 const payload = (content = 'Always cite Lucy IDs') => JSON.stringify({
   operation: 'create', key: 'project.rule', kind: 'rule', scope: USER,
-  content, justification: 'team rule', idempotency_key: 'adv-idempotency-16ok',
+  content, justification: 'team rule', idempotency_key: '69d5cec8-ffb6-577e-b0d1-43c4443d9581',
 });
 
 test('same idempotency key and payload replays; changed payload conflicts', async (t) => {

@@ -22,7 +22,7 @@ test('two isolated authorities cannot recall each other', async (t) => {
   const clientB = clientFor(b.baseUrl, 'tenant-b-token');
   const pending = await clientA.propose(JSON.stringify({
     operation: 'create', key: 'secret.note', kind: 'fact', scope: USER,
-    content: 'Tenant A only', justification: 'isolation', idempotency_key: 'iso-tenant-a-16ok',
+    content: 'Tenant A only', justification: 'isolation', idempotency_key: '6eae25d3-a8a9-5952-976b-a4029a0caf73',
   }));
   a.approve(pending.id);
   const recalledA = await clientA.recall(JSON.stringify({ query: 'Tenant', scope: USER, keys: ['secret.note'] }));
@@ -49,7 +49,7 @@ test('project scopes do not leak across authorized project ids', async (t) => {
   const projectB = { kind: 'project', id: 'project_bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb' };
   const pending = await client.propose(JSON.stringify({
     operation: 'create', key: 'decision.ship', kind: 'decision', scope: projectA,
-    content: 'Ship A only', justification: 'project isolation', idempotency_key: 'iso-project-a-16ok',
+    content: 'Ship A only', justification: 'project isolation', idempotency_key: '075cffec-6ea5-503f-b140-75c89236dba9',
   }));
   lucy.approve(pending.id);
   const inA = await client.recall(JSON.stringify({ query: 'Ship', scope: projectA, keys: ['decision.ship'] }));

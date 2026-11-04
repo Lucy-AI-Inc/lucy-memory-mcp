@@ -28,8 +28,8 @@ test('Wave 4 isolated E2E: MCP client, HTTP transport, AM-01 authority', async (
   const listed = await mcp.listTools();
   assert.deepEqual(listed.tools.map((tool) => tool.name), [...LUCY_MEMORY_TOOL_NAMES]);
   const proposalSchema = listed.tools.find((tool) => tool.name === 'memory_propose').inputSchema;
-  assert.equal(proposalSchema.properties.operation.enum.includes('create'), true);
-  assert.equal(proposalSchema.properties.memory_id.$ref, '#/$defs/common/$defs/memoryId');
+  assert.deepEqual(proposalSchema.oneOf.map((branch) => branch.properties.operation.const), ['create', 'replace']);
+  assert.equal(proposalSchema.oneOf[1].properties.memory_id.$ref, '#/$defs/common/$defs/memoryId');
   assert.equal(proposalSchema.$defs.common.$defs.memoryId.pattern, '^mem_[A-Za-z0-9_-]+$');
 
   const emptyResult = await mcp.callTool({
@@ -45,7 +45,7 @@ test('Wave 4 isolated E2E: MCP client, HTTP transport, AM-01 authority', async (
     scope: USER,
     content: 'Ada Lovelace',
     justification: 'user stated preferred name',
-    idempotency_key: 'e2e-create-key-16ok',
+    idempotency_key: '906ded27-ae5b-5012-8088-48623eb73b14',
   } });
   const pending = proposed.structuredContent;
   assert.equal(pending.status, 'pending');
@@ -54,7 +54,7 @@ test('Wave 4 isolated E2E: MCP client, HTTP transport, AM-01 authority', async (
   const repeated = await mcp.callTool({ name: 'memory_propose', arguments: {
     operation: 'create', key: 'profile.name', kind: 'fact', scope: USER,
     content: 'Ada Lovelace', justification: 'user stated preferred name',
-    idempotency_key: 'e2e-create-key-16ok',
+    idempotency_key: '906ded27-ae5b-5012-8088-48623eb73b14',
   } });
   assert.equal(repeated.structuredContent.id, pending.id, 'idempotent retry returns the original proposal');
 
@@ -98,7 +98,7 @@ test('Wave 4 isolated E2E: MCP client, HTTP transport, AM-01 authority', async (
     scope: USER,
     content: 'Ada King',
     justification: 'user corrected name',
-    idempotency_key: 'e2e-replace-key-16ok',
+    idempotency_key: '0f72e675-8488-515d-bf92-73d48aa375dc',
   }));
   assert.equal(replacePending.status, 'pending');
 
@@ -125,7 +125,7 @@ test('Wave 4 isolated E2E: MCP client, HTTP transport, AM-01 authority', async (
     scope: USER,
     content: 'stale',
     justification: 'should conflict',
-    idempotency_key: 'e2e-stale-key-16okay',
+    idempotency_key: 'a573e2b1-f145-56d3-b888-52b5aef3b1ef',
   }));
   const stalePending = await stale;
   const staleApprove = lucy.approve(stalePending.id);

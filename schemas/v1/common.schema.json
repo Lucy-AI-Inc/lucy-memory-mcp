@@ -21,9 +21,7 @@
       "const": "2026-08-09"
     },
     "idempotencyKey": {
-      "maxLength": 128,
-      "minLength": 16,
-      "pattern": "^[A-Za-z0-9._:-]+$",
+      "format": "uuid",
       "type": "string"
     },
     "justification": {

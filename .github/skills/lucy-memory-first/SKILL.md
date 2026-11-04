@@ -41,7 +41,7 @@ Call `memory_propose` when the user explicitly says to remember/save something, 
   "content": "PostgreSQL is canonical.",
   "justification": "The project owner approved this durable decision.",
   "source_ref": "conversation:architecture-review",
-  "idempotency_key": "arch-db-20260824-0001"
+  "idempotency_key": "123e4567-e89b-42d3-a456-426614174001"
 }
 ```
 

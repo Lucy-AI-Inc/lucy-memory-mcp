@@ -183,9 +183,9 @@
     {
       "expected_error": {
         "instance_path": "/idempotency_key",
-        "keyword": "minLength",
+        "keyword": "format",
         "params": {
-          "limit": 16
+          "format": "uuid"
         }
       },
       "file": "fixtures/v1/negative/invalid-idempotency-key.json",

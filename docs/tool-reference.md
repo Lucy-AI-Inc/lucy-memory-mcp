@@ -125,7 +125,7 @@ Create a governed proposal. Success can be pending, approved, rejected, expired,
   "content": "PostgreSQL is canonical.",
   "justification": "The project owner approved the decision.",
   "source_ref": "conversation:architecture-review",
-  "idempotency_key": "arch-db-20260824-0001"
+  "idempotency_key": "123e4567-e89b-42d3-a456-426614174001"
 }
 ```
 
@@ -149,7 +149,7 @@ Create must not include:
   "content": "PostgreSQL 18 is canonical.",
   "justification": "The approved architecture decision was updated.",
   "source_ref": "conversation:architecture-review-2",
-  "idempotency_key": "arch-db-20260824-0002"
+  "idempotency_key": "123e4567-e89b-42d3-a456-426614174002"
 }
 ```
 
@@ -164,7 +164,7 @@ Replace must not include `kind`. The existing memory kind is retained.
 | `justification` | 2048 UTF-8 bytes and 500 Unicode scalars |
 | `source_ref` | 256 characters |
 | `key` | 128 characters |
-| `idempotency_key` | 16-128 characters |
+| `idempotency_key` | UUID |
 
 ### Pending response
 

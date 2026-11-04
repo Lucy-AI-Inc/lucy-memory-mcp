@@ -14,7 +14,7 @@ const KEY = /^[a-z](?:[a-z0-9]|[._-](?=[a-z0-9])){0,127}$/;
 const PROJECT = /^project_[A-Za-z0-9_-]+$/;
 const MEMORY = /^mem_[A-Za-z0-9_-]+$/;
 const PROPOSAL = /^proposal_[A-Za-z0-9_-]+$/;
-const IDEMPOTENCY = /^[A-Za-z0-9._:-]+$/;
+const IDEMPOTENCY = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 const AUTHORITY = new Set(['tenant', 'tenantid', 'tenantauthority', 'account', 'accountid', 'accountauthority']);
 
 function plain(value) {
@@ -89,7 +89,7 @@ function commonProposal(request, keys) {
   noAuthority(request); allowed(request, keys, 'proposal request'); validateKey(request.key); validateScope(request.scope);
   bounded(request.content, 'content', { max: 2000, bytes: 8192 });
   bounded(request.justification, 'justification', { max: 500, bytes: 2048 });
-  if (typeof request.idempotency_key !== 'string' || request.idempotency_key.length < 16 || request.idempotency_key.length > 128 || !IDEMPOTENCY.test(request.idempotency_key)) throw new ValidationFailureError('idempotency_key must contain 16 to 128 safe characters.');
+  if (typeof request.idempotency_key !== 'string' || !IDEMPOTENCY.test(request.idempotency_key)) throw new ValidationFailureError('idempotency_key must be a UUID.');
   if (request.source_ref !== undefined) bounded(request.source_ref, 'source_ref', { max: 256 });
 }
 export function validateProposalRequest(request) {

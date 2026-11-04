@@ -1,6 +1,6 @@
 {
   "content": "PostgreSQL is canonical.",
-  "idempotency_key": "short",
+  "idempotency_key": "not-a-uuid-but-long-enough",
   "justification": "The user finalized this decision.",
   "key": "architecture.database",
   "kind": "decision",

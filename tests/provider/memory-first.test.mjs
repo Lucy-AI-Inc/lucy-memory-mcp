@@ -51,7 +51,7 @@ test('provider screens proposal justification and all serialized outbound text',
     key: 'profile.name',
     kind: 'fact',
     justification: `User supplied ${sampleGithubFineGrainedToken()}`,
-    idempotency_key: 'provider-key-16ok',
+    idempotency_key: '3f806330-7a22-5474-9302-63b483d90e3e',
   };
   const provider = new LucyMemoryFirstProvider({
     client: {
@@ -85,7 +85,7 @@ test('provider never sends secret-bearing proposal provenance', async () => {
       key: 'profile.name',
       kind: 'fact',
       justification: 'User stated their preferred name.',
-      idempotency_key: 'provider-source-16ok',
+      idempotency_key: 'f59d7272-d4db-5675-aed9-4521a7269b48',
       source_ref: `support transcript ${sampleSlackToken()}`,
     },
     scope: { kind: 'user' },
@@ -123,7 +123,7 @@ test('provider proposes durable events and never claims local canonical on failu
   const skip = await provider.afterEvent({ event: { temporary: true, content: 'tmp' }, scope: { kind: 'user' } });
   assert.equal(skip.proposed, false);
   const fail = await provider.afterEvent({
-    event: { durable: true, content: 'Ada', key: 'profile.name', kind: 'fact', idempotency_key: 'provider-key-16ok' },
+    event: { durable: true, content: 'Ada', key: 'profile.name', kind: 'fact', idempotency_key: '3f806330-7a22-5474-9302-63b483d90e3e' },
     scope: { kind: 'user' },
   });
   assert.equal(fail.proposed, false);
@@ -171,7 +171,7 @@ test('provider sends a contract-valid replacement through the real AgentMemoryCl
       kind: 'fact',
       content: 'Grace',
       justification: 'The user changed their preferred name.',
-      idempotency_key: 'provider-replace-16',
+      idempotency_key: 'a9d24911-bda1-548a-a2e4-bf554513988e',
     },
     scope: { kind: 'user' },
   });

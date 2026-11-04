@@ -98,14 +98,14 @@ test('HTTP transport maps recall, propose, and status to AM-01 routes', async ()
   await client.recall(JSON.stringify({ query: 'name', scope: USER }));
   await client.propose(JSON.stringify({
     operation: 'create', key: 'profile.name', kind: 'fact', scope: USER,
-    content: 'Ada', justification: 'user stated', idempotency_key: 'idempotency-key-16',
+    content: 'Ada', justification: 'user stated', idempotency_key: '123e4567-e89b-42d3-a456-426614174000',
   }));
   await client.proposalStatus(JSON.stringify({ proposal_id: 'proposal_aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa' }));
   assert.equal(calls[0].url, 'https://www.trylucy.ai/api/lucy/agent-memory/v1/recall');
   assert.equal(calls[0].method, 'POST');
   assert.deepEqual(calls.map(({ redirect }) => redirect), ['error', 'error', 'error']);
   assert.equal(calls[1].url, 'https://www.trylucy.ai/api/lucy/agent-memory/v1/proposals');
-  assert.equal(calls[1].headers['idempotency-key'], 'idempotency-key-16');
+  assert.equal(calls[1].headers['idempotency-key'], '123e4567-e89b-42d3-a456-426614174000');
   assert.match(calls[2].url, /\/proposals\/proposal_aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa$/);
   assert.equal(calls[2].method, 'GET');
   assert.equal(calls[2].body, null);
@@ -197,7 +197,7 @@ test('HTTP transport maps version_conflict and 401', async () => {
   });
   await assert.rejects(client.propose(JSON.stringify({
     operation: 'replace', memory_id: 'mem_aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa', expected_version: 1,
-    key: 'profile.name', scope: USER, content: 'x', justification: 'y', idempotency_key: 'idempotency-key-16',
+    key: 'profile.name', scope: USER, content: 'x', justification: 'y', idempotency_key: '123e4567-e89b-42d3-a456-426614174000',
   })), VersionConflictError);
   await assert.rejects(client.recall(JSON.stringify({ query: 'n', scope: USER })), AuthenticationFailureError);
 });
@@ -237,7 +237,7 @@ test('HTTP transport retries propose on 502 and 504 then stops', async () => {
   });
   await assert.rejects(client.propose(JSON.stringify({
     operation: 'create', key: 'profile.name', kind: 'fact', scope: USER,
-    content: 'Ada', justification: 'user stated', idempotency_key: 'idempotency-key-16',
+    content: 'Ada', justification: 'user stated', idempotency_key: '123e4567-e89b-42d3-a456-426614174000',
   })));
   assert.equal(n, 2);
 });
@@ -257,12 +257,12 @@ test('HTTP transport default proposal retries preserve serialized body and idemp
   const client = new AgentMemoryClient({ transport, token: 'tok', permissions: ['memory:propose'] });
   await client.propose(JSON.stringify({
     operation: 'create', key: 'profile.name', kind: 'fact', scope: USER,
-    content: 'Ada', justification: 'user stated', idempotency_key: 'idempotency-key-16',
+    content: 'Ada', justification: 'user stated', idempotency_key: '123e4567-e89b-42d3-a456-426614174000',
   }));
   assert.equal(attempts.length, 3);
   assert.deepEqual(attempts.map(({ body }) => body), [attempts[0].body, attempts[0].body, attempts[0].body]);
   assert.deepEqual(attempts.map(({ idempotencyKey }) => idempotencyKey), [
-    'idempotency-key-16', 'idempotency-key-16', 'idempotency-key-16',
+    '123e4567-e89b-42d3-a456-426614174000', '123e4567-e89b-42d3-a456-426614174000', '123e4567-e89b-42d3-a456-426614174000',
   ]);
 });
 
@@ -391,7 +391,7 @@ test('HTTP transport bounds Retry-After before exposing or waiting on it', async
   const client = new AgentMemoryClient({ transport, token: 'tok', permissions: ['memory:propose'] });
   await client.propose(JSON.stringify({
     operation: 'create', key: 'profile.name', kind: 'fact', scope: USER,
-    content: 'Ada', justification: 'user stated', idempotency_key: 'idempotency-key-16',
+    content: 'Ada', justification: 'user stated', idempotency_key: '123e4567-e89b-42d3-a456-426614174000',
   }));
   assert.deepEqual(waits, [60_000]);
 });
@@ -413,7 +413,7 @@ test('HTTP transport aborts promptly while waiting to retry propose', async () =
     operation: 'propose',
     payload: JSON.stringify({
       operation: 'create', key: 'profile.name', kind: 'fact', scope: USER,
-      content: 'Ada', justification: 'user stated', idempotency_key: 'idempotency-key-16',
+      content: 'Ada', justification: 'user stated', idempotency_key: '123e4567-e89b-42d3-a456-426614174000',
     }),
     accessToken: 'tok',
     signal: controller.signal,
@@ -436,7 +436,7 @@ test('HTTP transport passes through x-lucy-memory-operation-id', async () => {
     operation: 'propose',
     payload: JSON.stringify({
       operation: 'create', key: 'profile.name', kind: 'fact', scope: USER,
-      content: 'Ada', justification: 'user stated', idempotency_key: 'idempotency-key-16',
+      content: 'Ada', justification: 'user stated', idempotency_key: '123e4567-e89b-42d3-a456-426614174000',
     }),
     accessToken: 'tok',
     signal: new AbortController().signal,

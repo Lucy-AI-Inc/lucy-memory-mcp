@@ -74,7 +74,7 @@ test('isolated Hermes profile: installed closure launches 3 tools (fixture autho
           scope: { kind: 'user' },
           content: 'Always ask Lucy first.',
           justification: 'durable rule',
-          idempotency_key: 'hermes-profile-key-16',
+          idempotency_key: '7423c38d-801f-5a5c-b7f4-bffb29112c17',
         },
       });
       assert.equal(proposed.structuredContent.status, 'pending');

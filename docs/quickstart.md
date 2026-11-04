@@ -69,7 +69,7 @@ Call `memory_propose` with durable, non-sensitive information:
   "content": "PostgreSQL is the approved project database.",
   "justification": "The project owner approved the decision.",
   "source_ref": "conversation:architecture-review",
-  "idempotency_key": "architecture-database-2026-01"
+  "idempotency_key": "123e4567-e89b-42d3-a456-426614174001"
 }
 ```
 
