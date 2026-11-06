@@ -57,6 +57,14 @@ function bundled(name) {
   const definitions = definitionsFor([name]);
   return { ...structuredClone(definitions[name]), $defs: definitions };
 }
+function publishScope(value) {
+  if (Array.isArray(value)) return value.map(publishScope);
+  if (!value || typeof value !== 'object') return value;
+  if (value.$ref === '#/$defs/common/$defs/scope') {
+    return structuredClone(documents.get('common').$defs.scope);
+  }
+  return Object.fromEntries(Object.entries(value).map(([key, child]) => [key, publishScope(child)]));
+}
 function deepFreeze(value) {
   if (value && typeof value === 'object' && !Object.isFrozen(value)) {
     Object.freeze(value);
@@ -73,12 +81,12 @@ const proposalBranch = (name) => {
 };
 const statusDefinitions = definitionsFor(['common']);
 export const MCP_SCHEMAS = deepFreeze({
-  recallInput: bundled('recall-request'),
-  proposalInput: {
+  recallInput: publishScope(bundled('recall-request')),
+  proposalInput: publishScope({
     type: 'object',
     oneOf: [proposalBranch('create-proposal-request'), proposalBranch('replace-proposal-request')],
     $defs: proposalDefinitions,
-  },
+  }),
   proposalStatusInput: {
     type: 'object',
     additionalProperties: false,

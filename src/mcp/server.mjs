@@ -19,7 +19,7 @@ export const LUCY_MEMORY_TOOL_NAMES = Object.freeze([
 const SAFE_ERROR_MESSAGES = Object.freeze({
   authentication_failure: 'Lucy authentication failed.',
   authorization_failure: 'Lucy authorization failed.',
-  invalid_scope: 'The memory scope is invalid.',
+  invalid_scope: 'The memory scope is invalid. Use {"kind":"user"}, {"kind":"workspace"}, or {"kind":"project","id":"project_..."}.',
   invalid_key: 'The memory key is invalid.',
   invalid_kind: 'The memory kind is invalid.',
   validation_failure: 'The memory request is invalid.',

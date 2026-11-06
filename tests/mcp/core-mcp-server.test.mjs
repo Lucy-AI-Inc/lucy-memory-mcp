@@ -216,7 +216,11 @@ test('generic MCP client completes handshake, tools/list, and all three calls th
   ]);
   assert.equal(listed.tools.some(({ name }) => /write|approve|reject|delete|restore|resolve/i.test(name)), false);
   const recallTool = listed.tools.find(({ name }) => name === 'memory_recall');
-  assert.equal(recallTool.inputSchema.$defs.common.$defs.scope.oneOf[2].properties.id.maxLength, 128);
+  const recallScopes = recallTool.inputSchema.properties.scope.oneOf;
+  assert.deepEqual(recallScopes.map(({ properties }) => properties.kind.const), ['user', 'workspace', 'project']);
+  assert.deepEqual(recallScopes.map(({ required }) => required), [['kind'], ['kind'], ['kind', 'id']]);
+  assert.equal(recallScopes[2].properties.id.pattern, '^project_[A-Za-z0-9_-]+$');
+  assert.equal(recallScopes[2].properties.id.maxLength, 128);
   assert.equal(recallTool.annotations.idempotentHint, false);
   const proposeTool = listed.tools.find(({ name }) => name === 'memory_propose');
   assert.equal(proposeTool.inputSchema.oneOf.length, 2);
@@ -236,9 +240,12 @@ test('generic MCP client completes handshake, tools/list, and all three calls th
   assert.equal(proposeTool.inputSchema.$defs.common.$defs.content.maxLength, 2000);
   assert.equal(proposeTool.inputSchema.$defs.common.$defs.justification.maxLength, 500);
   assert.equal(proposeTool.inputSchema.$defs.common.$defs.idempotencyKey.format, 'uuid');
-  const scopes = proposeTool.inputSchema.$defs.common.$defs.scope.oneOf;
-  assert.deepEqual(scopes.map(({ properties }) => properties.kind.const), ['user', 'workspace', 'project']);
-  assert.deepEqual(scopes[0].required, ['kind']);
+  for (const branch of [createBranch, replaceBranch]) {
+    const scopes = branch.properties.scope.oneOf;
+    assert.deepEqual(scopes.map(({ properties }) => properties.kind.const), ['user', 'workspace', 'project']);
+    assert.deepEqual(scopes.map(({ required }) => required), [['kind'], ['kind'], ['kind', 'id']]);
+    assert.equal(scopes.every(({ additionalProperties }) => additionalProperties === false), true);
+  }
   assert.equal(proposeTool.annotations.idempotentHint, true);
   assert.equal(listed.tools.find(({ name }) => name === 'memory_proposal_status').annotations.idempotentHint, false);
 
@@ -323,6 +330,22 @@ test('upstream permission, transport, timeout, and malformed-response failures a
   const malformedResult = await malformed.callTool({ name: 'memory_recall', arguments: recallRequest() });
   assert.equal(malformedResult.isError, true);
   assert.equal(errorPayload(malformedResult).code, 'malformed_response');
+});
+
+test('invalid-scope failures describe the accepted forms without exposing upstream details', async (t) => {
+  const client = await inMemoryHarness(t, async () => errorResponse(
+    'invalid_scope', 400, false, 'tenant=private account=private project=private',
+  ));
+  const result = await client.callTool({ name: 'memory_recall', arguments: recallRequest() });
+  assert.equal(result.isError, true);
+  assert.deepEqual(errorPayload(result), {
+    code: 'invalid_scope',
+    message: 'The memory scope is invalid. Use {"kind":"user"}, {"kind":"workspace"}, or {"kind":"project","id":"project_..."}.',
+    retryable: false,
+    status: 400,
+    request_id: 'req_error',
+  });
+  assert.doesNotMatch(result.content[0].text, /tenant=private|account=private|project=private/);
 });
 
 test('transient MCP errors are retryable only for idempotency-key-backed proposals', async (t) => {
