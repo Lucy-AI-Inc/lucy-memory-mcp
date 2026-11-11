@@ -30,6 +30,7 @@ The MCP server has no approval, deletion, restoration, or administrative tool.
 | `preference` | A durable user preference |
 | `decision` | A project or operating decision |
 | `rule` | A standing governed rule |
+| `context` | Durable background needed to interpret later work |
 
 A memory cannot grant credentials, spending authority, deployment authority, tenant access, or a policy exemption.
 

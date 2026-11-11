@@ -17,7 +17,7 @@ const SCOPES = [
   { kind: 'workspace' },
   { kind: 'project', id: 'project_aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa' },
 ];
-const KINDS = ['fact', 'preference', 'decision', 'rule'];
+const KINDS = ['fact', 'preference', 'decision', 'rule', 'context'];
 
 test('AM-01 scopes and kinds: pending is not recallable; approve then recall', async (t) => {
   const lucy = await listenIsolatedAm01({ token: 'matrix-token' });
