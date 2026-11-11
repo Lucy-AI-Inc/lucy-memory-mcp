@@ -92,7 +92,8 @@
     "fact",
     "preference",
     "decision",
-    "rule"
+    "rule",
+    "context"
   ],
   "memory_lifecycle": [
     "active",

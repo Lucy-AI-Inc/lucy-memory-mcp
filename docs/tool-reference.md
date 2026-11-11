@@ -40,7 +40,7 @@ Recall approved, active Lucy memory.
 | `query` | yes | Maximum 1024 Unicode scalars |
 | `scope` | yes | User, workspace, or project |
 | `keys` | no | Maximum 20 keys |
-| `kinds` | no | `fact`, `preference`, `decision`, `rule` |
+| `kinds` | no | `fact`, `preference`, `decision`, `rule`, `context` |
 | `limit` | no | 1-5; default 3 |
 
 Request limit: 8192 UTF-8 bytes.

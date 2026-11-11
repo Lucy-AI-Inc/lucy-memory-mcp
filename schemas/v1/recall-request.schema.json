@@ -16,7 +16,7 @@
       "items": {
         "$ref": "https://schemas.trylucy.ai/agent-memory/v1/common.schema.json#/$defs/memoryKind"
       },
-      "maxItems": 4,
+      "maxItems": 5,
       "minItems": 1,
       "type": "array",
       "uniqueItems": true

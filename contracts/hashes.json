@@ -2,18 +2,18 @@
   "algorithm": "sha256",
   "contract": {
     "path": "contracts/agent-memory-api.contract.json",
-    "sha256": "aa16ca4d91536f029e19084fce43510e7c44dc2ccb4aebd7c3f27900a6073584"
+    "sha256": "664b3a9e079f6173a8d779d88f6bcd9cae70b642d41124e4ff2d31ac71c93990"
   },
   "schemas": {
-    "schemas/v1/common.schema.json": "04934ec2ccbb6742c8bb3b0c787574788810a1f52b90689f1da757c58b16fe1c",
-    "schemas/v1/contract-document.schema.json": "526ada10476ca31d6faf91841b39dab2fa4293e6a7a3e93b15c769de52b37b4c",
+    "schemas/v1/common.schema.json": "2b84bbb652bb5ea05e53b64eb81ce2f71eea6a038cf88b0c224c126493e55c02",
+    "schemas/v1/contract-document.schema.json": "b7371f43c493d69cf9d2599b1d376d8a9a679b2bfe7f48bcc2275f0419328fb9",
     "schemas/v1/create-proposal-request.schema.json": "cc0c90de7243f9f1a7040831d0ddaa644d896747c567b79c340fb42a64fc3637",
     "schemas/v1/error.schema.json": "07dac4fea8be5ce2c09ee2b5924e870d353645ff83fca66bf657018c57b43b23",
     "schemas/v1/memory-version-state.schema.json": "09353978ddca519bc6238306c466be1ec6994248f04071562537658bac76567c",
     "schemas/v1/memory.schema.json": "559c992d6041dd49f3a9fcc969f313ffaa318679f44fdac20ecf9a50242bdc29",
     "schemas/v1/proposal-status.schema.json": "909d901ba9ab2bbcfe39e6b2e41b7828ed957fd1e877cbea2a3155a460804adb",
     "schemas/v1/public-surface.schema.json": "fd0bda7dfbe4f3b779c79e7b1edc6cfc26ec0bde8709ccf7235eba81b30cce91",
-    "schemas/v1/recall-request.schema.json": "1c696b36e2d20daf329075f58f5ae56a0607c6c5f023665c1c58fdedf4161da6",
+    "schemas/v1/recall-request.schema.json": "72f898f94dfd7ea77c8f56196725138193dcc85627a81a4162d3bc637f218e69",
     "schemas/v1/recall-response.schema.json": "51c3fd68cd6157c07766144c2533edbd440eb7621727ea463c88910186c2458f",
     "schemas/v1/receipt.schema.json": "16b2a739f3c4e175f69b9273f28541b51a5ba303c2f842a095487d773779911f",
     "schemas/v1/replace-proposal-request.schema.json": "020c1a18017ce68897fae2b1edbe2dcae31bdb4aa1bab0445df137be6a499940",

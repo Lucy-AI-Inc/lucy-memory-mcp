@@ -1,4 +1,4 @@
-export type MemoryKind = 'fact' | 'preference' | 'decision' | 'rule';
+export type MemoryKind = 'fact' | 'preference' | 'decision' | 'rule' | 'context';
 export type MemoryLifecycle = 'active' | 'superseded' | 'revoked' | 'forgotten';
 export type ProposalLifecycle = 'pending' | 'approved' | 'rejected' | 'expired' | 'superseded';
 export type PublicPermission = 'memory:read' | 'memory:propose';

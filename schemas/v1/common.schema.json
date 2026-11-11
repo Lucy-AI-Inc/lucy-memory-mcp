@@ -44,7 +44,8 @@
         "fact",
         "preference",
         "decision",
-        "rule"
+        "rule",
+        "context"
       ]
     },
     "memoryLifecycle": {

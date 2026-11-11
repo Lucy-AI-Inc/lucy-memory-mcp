@@ -216,6 +216,9 @@ test('generic MCP client completes handshake, tools/list, and all three calls th
   ]);
   assert.equal(listed.tools.some(({ name }) => /write|approve|reject|delete|restore|resolve/i.test(name)), false);
   const recallTool = listed.tools.find(({ name }) => name === 'memory_recall');
+  const governedKinds = ['fact', 'preference', 'decision', 'rule', 'context'];
+  assert.equal(recallTool.inputSchema.properties.kinds.maxItems, governedKinds.length);
+  assert.deepEqual(recallTool.inputSchema.$defs.common.$defs.memoryKind.enum, governedKinds);
   const recallScopes = recallTool.inputSchema.properties.scope.oneOf;
   assert.deepEqual(recallScopes.map(({ properties }) => properties.kind.const), ['user', 'workspace', 'project']);
   assert.deepEqual(recallScopes.map(({ required }) => required), [['kind'], ['kind'], ['kind', 'id']]);
@@ -249,7 +252,10 @@ test('generic MCP client completes handshake, tools/list, and all three calls th
   assert.equal(proposeTool.annotations.idempotentHint, true);
   assert.equal(listed.tools.find(({ name }) => name === 'memory_proposal_status').annotations.idempotentHint, false);
 
-  const recalled = await client.callTool({ name: 'memory_recall', arguments: recallRequest() });
+  const recalled = await client.callTool({
+    name: 'memory_recall',
+    arguments: { ...recallRequest(), kinds: governedKinds },
+  });
   assert.equal(recalled.isError, undefined);
   assert.equal(recalled.structuredContent.consistency, 'canonical_active');
 

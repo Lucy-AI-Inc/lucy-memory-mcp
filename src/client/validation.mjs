@@ -4,7 +4,7 @@ import {
   ProposalContractIncompatibilityError, ValidationFailureError,
 } from './errors.mjs';
 
-export const MEMORY_KINDS = Object.freeze(['fact', 'preference', 'decision', 'rule']);
+export const MEMORY_KINDS = Object.freeze(['fact', 'preference', 'decision', 'rule', 'context']);
 export const MEMORY_LIFECYCLES = Object.freeze(['active', 'superseded', 'revoked', 'forgotten']);
 export const PROPOSAL_LIFECYCLES = Object.freeze(['pending', 'approved', 'rejected', 'expired', 'superseded']);
 export const SCOPE_KINDS = Object.freeze(['user', 'workspace', 'project']);
@@ -81,7 +81,7 @@ export function validateRecallRequest(request) {
   allowed(request, new Set(['query', 'scope', 'keys', 'kinds', 'limit']), 'recall request');
   bounded(request.query, 'query', { max: 1024 }); validateScope(request.scope);
   if (request.keys !== undefined) unique(request.keys, 'keys', 20, validateKey);
-  if (request.kinds !== undefined) unique(request.kinds, 'kinds', 4, validateKind);
+  if (request.kinds !== undefined) unique(request.kinds, 'kinds', MEMORY_KINDS.length, validateKind);
   if (request.limit !== undefined && (!Number.isInteger(request.limit) || request.limit < 1 || request.limit > 5)) throw new ValidationFailureError('limit must be an integer between 1 and 5.');
   return request;
 }

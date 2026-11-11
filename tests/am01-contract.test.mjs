@@ -24,7 +24,7 @@ test("frozen contract exposes only the approved v0.1 surface", async () => {
   assert.equal(CONTRACT_PATH, "contracts/agent-memory-api.contract.json");
   assert.equal(contract.contract_version, EXPECTED_CONTRACT_VERSION);
   assert.equal(contract.public_schema_version, EXPECTED_SCHEMA_VERSION);
-  assert.deepEqual(contract.memory_kinds, ["fact", "preference", "decision", "rule"]);
+  assert.deepEqual(contract.memory_kinds, ["fact", "preference", "decision", "rule", "context"]);
   assert.deepEqual(contract.scope_kinds, ["user", "workspace", "project"]);
   assert.deepEqual(contract.public_permissions, ["memory:read", "memory:propose"]);
   assert.deepEqual(contract.mcp_tools, [

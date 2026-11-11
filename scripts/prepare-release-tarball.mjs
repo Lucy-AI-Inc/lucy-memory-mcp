@@ -7,6 +7,7 @@ import {
   readFileSync,
   realpathSync,
   rmSync,
+  statSync,
   writeFileSync
 } from 'node:fs';
 import { tmpdir } from 'node:os';
@@ -41,6 +42,27 @@ export function validatePackResult(result, expected) {
   return artifact.filename;
 }
 
+export function isSameFile(left, right) {
+  try {
+    const leftStat = statSync(left);
+    const rightStat = statSync(right);
+    return leftStat.dev === rightStat.dev && leftStat.ino === rightStat.ino;
+  } catch {
+    return false;
+  }
+}
+
+export function npmInvocation(args, { platform = process.platform, env = process.env } = {}) {
+  return platform === 'win32'
+    ? { command: env.ComSpec || 'cmd.exe', args: ['/d', '/s', '/c', 'npm.cmd', ...args] }
+    : { command: 'npm', args };
+}
+
+function execNpmSync(args, options) {
+  const invocation = npmInvocation(args);
+  return execFileSync(invocation.command, invocation.args, options);
+}
+
 function assertInside(root, path) {
   const rootPrefix = `${realpathSync(root)}${sep}`;
   if (!realpathSync(path).startsWith(rootPrefix)) fail('tarball escaped the repository');
@@ -48,7 +70,7 @@ function assertInside(root, path) {
 
 export function prepareReleaseTarball({ root = process.cwd(), env = process.env } = {}) {
   const packageJson = parseJson(readFileSync(resolve(root, 'package.json'), 'utf8'), 'package.json');
-  const packed = parseJson(execFileSync('npm', ['pack', '--ignore-scripts', '--json'], {
+  const packed = parseJson(execNpmSync(['pack', '--ignore-scripts', '--json'], {
     cwd: root,
     encoding: 'utf8',
     stdio: ['ignore', 'pipe', 'inherit']
@@ -63,7 +85,7 @@ export function prepareReleaseTarball({ root = process.cwd(), env = process.env 
   const fixture = mkdtempSync(resolve(tmpdir(), 'lucy-release-'));
   try {
     writeFileSync(resolve(fixture, 'package.json'), '{"private":true,"type":"module"}\n', { mode: 0o600 });
-    execFileSync('npm', [
+    execNpmSync([
       'install',
       '--ignore-scripts',
       '--prefer-offline',
@@ -101,7 +123,7 @@ export function prepareReleaseTarball({ root = process.cwd(), env = process.env 
 }
 
 const invokedPath = process.argv[1] && resolve(process.argv[1]);
-if (invokedPath === fileURLToPath(import.meta.url)) {
+if (invokedPath && isSameFile(invokedPath, fileURLToPath(import.meta.url))) {
   try {
     prepareReleaseTarball({ root: resolve(dirname(fileURLToPath(import.meta.url)), '..') });
   } catch (error) {

@@ -126,6 +126,16 @@ test('rejects invalid scope, key, kind, and tenant authority before transport', 
   assert.equal(calls, 0);
 });
 
+test('accepts context while preserving legacy decision compatibility', async () => {
+  assert.equal(api.validateKind('context'), 'context');
+  assert.equal(api.validateKind('decision'), 'decision');
+  assert.deepEqual(
+    api.validateRecallRequest({ scope: USER, query: 'project', kinds: ['fact', 'preference', 'decision', 'rule', 'context'] }).kinds,
+    ['fact', 'preference', 'decision', 'rule', 'context'],
+  );
+  assert.equal(api.validateProposalRequest({ ...create(), kind: 'context' }).kind, 'context');
+});
+
 test('enforces the frozen client authorization matrix before transport', async () => {
   const operations = [
     ['recall', requestJson({ scope: USER, query: 'profile' }), () => recall()],

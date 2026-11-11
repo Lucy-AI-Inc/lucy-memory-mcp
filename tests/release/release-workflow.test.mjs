@@ -1,8 +1,14 @@
 import assert from 'node:assert/strict';
-import { readFileSync } from 'node:fs';
+import { linkSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
+import { tmpdir } from 'node:os';
+import { resolve } from 'node:path';
 import { test } from 'node:test';
 import YAML from 'yaml';
-import { validatePackResult } from '../../scripts/prepare-release-tarball.mjs';
+import {
+  isSameFile,
+  npmInvocation,
+  validatePackResult,
+} from '../../scripts/prepare-release-tarball.mjs';
 import { validateNpmVersion, validateReleaseMetadata } from '../../scripts/verify-release.mjs';
 
 const workflowText = readFileSync(new URL('../../.github/workflows/release.yml', import.meta.url), 'utf8');
@@ -80,6 +86,34 @@ test('tarball identity and filename are bound to validated package metadata', ()
     version: publicPackage.version,
     filename: '../agent-memory.tgz'
   }], publicPackage), /unsafe filename/);
+});
+
+test('release script recognizes the same entry file through an alias path', () => {
+  const fixture = mkdtempSync(resolve(tmpdir(), 'lucy-release-entry-'));
+  try {
+    const source = resolve(fixture, 'source.mjs');
+    const alias = resolve(fixture, 'alias.mjs');
+    writeFileSync(source, '');
+    linkSync(source, alias);
+    assert.equal(isSameFile(source, alias), true);
+    assert.equal(isSameFile(source, resolve(fixture, 'missing.mjs')), false);
+  } finally {
+    rmSync(fixture, { recursive: true, force: true });
+  }
+});
+
+test('release script launches npm through cmd on Windows only', () => {
+  assert.deepEqual(npmInvocation(['pack'], {
+    platform: 'win32',
+    env: { ComSpec: 'C:\\Windows\\System32\\cmd.exe' },
+  }), {
+    command: 'C:\\Windows\\System32\\cmd.exe',
+    args: ['/d', '/s', '/c', 'npm.cmd', 'pack'],
+  });
+  assert.deepEqual(npmInvocation(['pack'], { platform: 'linux', env: {} }), {
+    command: 'npm',
+    args: ['pack'],
+  });
 });
 
 test('CI uses one current-Node Linux gate without duplicate branch pushes', () => {
