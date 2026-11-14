@@ -57,13 +57,39 @@ Checked-in examples are available for:
 
 Merge the Lucy entry into the host's existing configuration. Preserve unrelated servers and settings. Host configuration formats and paths can change between releases, so consult the host's current documentation when an example no longer matches.
 
-## Verify the connection
+## Memory-first behavior adapters
+
+The canonical, vendor-neutral instructions are in [`.github/skills/lucy-memory-first/SKILL.md`](../.github/skills/lucy-memory-first/SKILL.md). Use that file directly; do not fork its content per host.
+
+| Host | Adapter |
+|---|---|
+| GitHub Copilot | Copy the `lucy-memory-first` directory into the repository's `.github/skills/` directory. This repository is already installed correctly. |
+| Grok | Paste the canonical `SKILL.md` body into the Grok workspace or agent custom instructions. Keep the title and rules; YAML front matter may be omitted when the field accepts plain instructions only. |
+| Hermes | Install the Lucy MCP entry with `installHermesLucyConfig`. Lucy surfaces the canonical skill as MCP server `instructions`; if the Hermes deployment has a native skills directory, install the same `lucy-memory-first` directory there as well. |
+| Generic instruction-only host | Paste the canonical `SKILL.md` body into persistent project instructions. YAML front matter may be omitted. |
+
+The npm package includes the canonical file at `node_modules/@trylucy/agent-memory/.github/skills/lucy-memory-first/SKILL.md`, so adapters can copy it without fetching a second source.
+
+## Verify setup
+
+Verify the two layers independently.
+
+### 1. MCP connected
 
 1. Confirm the command resolves and starts.
 2. Confirm exactly the three Lucy tools above are discovered.
 3. Run a safe recall. An empty result is valid.
 4. Submit a non-sensitive proposal and inspect its status.
 5. Confirm a pending proposal is not described as saved.
+
+### 2. Memory-first behavior installed
+
+1. Confirm the host loaded the canonical `lucy-memory-first` skill or instructions.
+2. Ask the host when it should recall Lucy memory.
+3. Confirm it describes selective recall for durable context, not every prompt.
+4. Confirm it treats proposals as human-governed and pending proposals as not saved.
+
+Tool discovery does not prove the behavior layer is installed, and loading instructions does not prove the MCP process can connect.
 
 ## Recall search guidance
 

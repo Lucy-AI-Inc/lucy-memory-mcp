@@ -195,6 +195,8 @@ For focused runtime checks, use `npm run test:mcp` for the real stdio entry poin
 
 The machine-readable contract is in [contracts/agent-memory-api.contract.json](contracts/agent-memory-api.contract.json), with public schemas under [schemas/](schemas/).
 
+Setup has two independent success criteria: **MCP connected** (the host discovers and can call Lucy's three tools) and **memory-first behavior installed** (the host loads the canonical skill above). See [Client setup](docs/clients.md#verify-setup) for Copilot, Grok, Hermes, and instruction-only adapters.
+
 ## Support and security
 
 For setup questions and reproducible bugs, open a [GitHub issue](https://github.com/Lucy-AI-Inc/lucy-memory-mcp/issues). Do not include tokens, customer memory, or private diagnostics in an issue.

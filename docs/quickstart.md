@@ -33,7 +33,18 @@ Requirements are Node.js `>=20 <25`, a Lucy credential, and a Lucy environment w
 
 Use the host's secret store or protected environment for the token. Never commit a real value. See [Client setup](clients.md) for host-specific templates.
 
-## 3. Verify discovery
+## 3. Install the memory-first behavior
+
+Connecting MCP exposes tools; it does not guarantee that the host will use them proactively. Install or surface the canonical [Lucy memory-first skill](../.github/skills/lucy-memory-first/SKILL.md) using the adapter for your host:
+
+- **GitHub Copilot:** keep the canonical file at `.github/skills/lucy-memory-first/SKILL.md` in the repository.
+- **Grok:** add the canonical skill body to the workspace or agent custom instructions.
+- **Hermes:** the MCP server surfaces the canonical skill through its MCP `instructions`; also add the same file through Hermes' supported skill mechanism when proactive behavior must not depend on MCP-instruction support.
+- **Instruction-only hosts:** copy the canonical skill body into the host's persistent project instructions.
+
+Do not maintain a host-specific rewrite. See [Client setup](clients.md#memory-first-behavior-adapters) for exact adapters.
+
+## 4. Verify MCP connectivity
 
 Restart the host and confirm it discovers exactly:
 
@@ -41,7 +52,15 @@ Restart the host and confirm it discovers exactly:
 - `memory_propose`
 - `memory_proposal_status`
 
-## 4. Recall approved memory
+Run a safe `memory_recall`. An empty result is successful and proves connectivity.
+
+## 5. Verify memory-first behavior
+
+Confirm the host has loaded the canonical skill independently of MCP discovery. Ask it when Lucy should be recalled and verify its answer reflects selective recall, human-governed proposals, and the rule that pending proposals are not saved memory.
+
+These are two separate setup checks: **MCP connected** and **memory-first behavior installed**. Passing one does not imply the other.
+
+## 6. Recall approved memory
 
 Call `memory_recall`:
 
@@ -56,7 +75,7 @@ Call `memory_recall`:
 
 An empty result is successful and means no visible active memory matched.
 
-## 5. Propose memory
+## 7. Propose memory
 
 Call `memory_propose` with durable, non-sensitive information:
 
@@ -75,7 +94,7 @@ Call `memory_propose` with durable, non-sensitive information:
 
 A `pending` response is not saved memory. Lucy must approve the proposal, or apply an administrator-enabled auto-memory policy, before normal recall can return it.
 
-## 6. Check status
+## 8. Check status
 
 Use `memory_proposal_status` with the returned proposal ID. Poll with bounded backoff and stop at `approved`, `rejected`, `expired`, or `superseded`; status calls can consume credits.
 

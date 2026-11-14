@@ -32,7 +32,16 @@ console.log(installed.artifact.receiptPath);
 
 Use absolute paths. Obtain `expectedSourceGitSha` from a trusted release channel rather than from an untrusted checkout. The selected Node executable must satisfy the package's engine range.
 
+The installed MCP server surfaces the canonical [`lucy-memory-first` skill](../.github/skills/lucy-memory-first/SKILL.md) through MCP `instructions`. If the Hermes deployment supports native skills, also copy the canonical `lucy-memory-first` directory into its configured skills directory; do not create a Hermes-specific rewrite.
+
 The installer verifies tracked package bytes against the pinned Git commit, creates a private artifact closure, installs production dependencies offline with scripts disabled, and records a receipt and digest. The Hermes YAML stores an environment reference such as `${LUCY_MEMORY_TOKEN}` rather than the token value.
+
+## Verify both setup layers
+
+1. **MCP connected:** confirm Hermes discovers exactly `memory_recall`, `memory_propose`, and `memory_proposal_status`, then run a safe recall.
+2. **Memory-first behavior installed:** confirm Hermes loaded the canonical skill from MCP `instructions` or its native skills mechanism, then verify it describes selective recall and that pending proposals are not saved.
+
+These checks are independent. A valid YAML entry does not prove the behavior guidance was loaded.
 
 ## Profile requirements
 

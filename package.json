@@ -29,6 +29,7 @@
     "lucy-memory-mcp": "./src/mcp/bin.mjs"
   },
   "files": [
+    ".github/skills/lucy-memory-first/SKILL.md",
     "src",
     "schemas",
     "contracts",

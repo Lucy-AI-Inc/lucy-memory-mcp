@@ -60,7 +60,7 @@ test('npm pack dry-run allowlist excludes private governance and development art
   const result = Array.isArray(parsed) ? parsed[0] : parsed;
   const names = result.files.map(({ path }) => path.replaceAll('\\', '/')).sort();
   for (const required of [
-    'LICENSE', 'README.md', 'package.json', 'src/client/index.mjs', 'src/client/index.d.ts',
+    'LICENSE', 'README.md', 'package.json', '.github/skills/lucy-memory-first/SKILL.md', 'src/client/index.mjs', 'src/client/index.d.ts',
     'src/mcp/server.mjs', 'src/mcp/index.d.ts', 'src/mcp/stdio.mjs', 'src/mcp/stdio.d.ts', 'src/mcp/bin.mjs',
     'src/client/http-transport.mjs', 'src/client/http-transport.d.ts',
     'src/provider/index.mjs', 'src/integrations/hermes.mjs',
@@ -68,7 +68,8 @@ test('npm pack dry-run allowlist excludes private governance and development art
     'schemas/v1/common.schema.json', 'contracts/agent-memory-api.contract.json', 'scripts/lib/am01.mjs',
   ]) assert.ok(names.includes(required), `missing package file: ${required}`);
   for (const name of names) {
-    assert.doesNotMatch(name, /(?:^|\/)(?:\.lucy-governance|tests|fixtures|\.github|\.git|node_modules)(?:\/|$)/);
+    assert.doesNotMatch(name, /(?:^|\/)(?:\.lucy-governance|tests|fixtures|\.git|node_modules)(?:\/|$)/);
+    if (name.startsWith('.github/')) assert.equal(name, '.github/skills/lucy-memory-first/SKILL.md');
     assert.doesNotMatch(name, /certifier|evidence|scope-lock|report/i);
   }
   assert.equal(names.some((name) => name.endsWith('.pem') || name.endsWith('.key')), false);
