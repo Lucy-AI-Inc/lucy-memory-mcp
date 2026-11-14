@@ -42,6 +42,12 @@ test('client docs link the supported host templates without embedding credential
   assert.match(docs, /codex\.toml/);
   assert.match(docs, /cursor\.json/);
   assert.match(docs, /vscode\.json/);
+  assert.match(docs, /GitHub Copilot/);
+  assert.match(docs, /Grok/);
+  assert.match(docs, /Hermes/);
+  assert.match(docs, /Generic instruction-only host/);
+  assert.match(docs, /MCP connected/);
+  assert.match(docs, /Memory-first behavior installed/);
   assert.doesNotMatch(docs, /sk_live_|ghp_|AKIA/);
 });
 

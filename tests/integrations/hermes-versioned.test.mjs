@@ -84,7 +84,9 @@ function artifactClosure(root, dependencyOnly = false) {
       visit(join(relative, name));
     }
   };
-  for (const rootPath of dependencyOnly ? ['node_modules'] : ['src', 'schemas', 'contracts', 'scripts/lib', 'node_modules']) visit(rootPath);
+  for (const rootPath of dependencyOnly
+    ? ['node_modules']
+    : ['src', 'schemas', 'contracts', 'scripts/lib', '.github/skills/lucy-memory-first', 'node_modules']) visit(rootPath);
   const hash = createHash('sha256');
   for (const file of files.sort()) { hash.update(file); hash.update('\0'); hash.update(readFileSync(join(root, file))); hash.update('\0'); }
   return { digest: hash.digest('hex'), files };

@@ -196,17 +196,7 @@ test('generic MCP client completes handshake, tools/list, and all three calls th
   await client.connect(transport);
   assert.equal(client.getNegotiatedProtocolVersion(), LATEST_PROTOCOL_VERSION);
   const instructions = client.getInstructions();
-  assert.match(instructions, /concise literal, distinctive substrings/);
-  assert.match(instructions, /spelling and spacing variants/);
-  assert.match(instructions, /Scope is an object, never a string/);
-  assert.match(instructions, /user `\{ "kind": "user" \}`/);
-  assert.match(instructions, /workspace `\{ "kind": "workspace" \}`/);
-  assert.match(instructions, /project `\{ "kind": "project", "id": "<project-id>" \}`/);
-  assert.match(instructions, /`\{ "query": "database", "scope": \{ "kind": "user" \} \}`/);
-  assert.match(instructions, /known keys, kinds, and scopes/);
-  assert.match(instructions, /Broaden or narrow/);
-  assert.match(instructions, /one empty result/);
-  assert.match(instructions, /zero matches from authentication, authorization, or service errors/);
+  assert.equal(instructions, readFileSync(fileURLToPath(new URL('../../.github/skills/lucy-memory-first/SKILL.md', import.meta.url)), 'utf8'));
 
   const listed = await client.listTools();
   assert.deepEqual(listed.tools.map(({ name }) => name), [
