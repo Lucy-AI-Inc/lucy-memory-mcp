@@ -1,0 +1,14 @@
+.git
+.github/*
+!.github/skills/
+.github/skills/*
+!.github/skills/lucy-memory-first/
+!.github/skills/lucy-memory-first/SKILL.md
+.lucy-governance
+coverage
+docs
+node_modules
+tests
+*.log
+*.tgz
+.env*

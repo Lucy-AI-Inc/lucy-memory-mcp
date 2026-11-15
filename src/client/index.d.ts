@@ -174,6 +174,25 @@ export interface AgentMemoryClientOptions {
   token: string;
   permissions: PublicPermission[];
   timeoutMs?: number;
+  onOperabilityEvent?: import('../operability.js').OperabilityEmitter;
+}
+
+export interface ValidatedHostedAuthContext {
+  subject: string;
+  workspaceId: string;
+  /** OAuth scopes validated by the hosted MCP resource server. Non-memory scopes are ignored. */
+  scopes: readonly string[];
+}
+
+export interface HostedAgentMemoryClientOptions {
+  authContext: ValidatedHostedAuthContext;
+  exchangeUrl: string;
+  /** Server-to-server credential for the exchange endpoint. */
+  serviceToken: string;
+  transport: AgentMemoryTransport;
+  fetchImpl?: typeof fetch;
+  timeoutMs?: number;
+  exchangeTimeoutMs?: number;
 }
 
 export type RecallRequestJson = string;
@@ -189,6 +208,8 @@ export class AgentMemoryClient {
   propose(requestJson: ProposalRequestJson): Promise<ProposalStatus>;
   proposalStatus(requestJson: ProposalStatusRequestJson): Promise<ProposalStatus>;
 }
+
+export function createHostedAgentMemoryClient(options: HostedAgentMemoryClientOptions): Promise<AgentMemoryClient>;
 
 export interface AgentMemoryErrorOptions {
   code?: string;

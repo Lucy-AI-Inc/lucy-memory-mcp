@@ -72,6 +72,10 @@ The MCP server is a stdio process launched by an MCP host. From a source checkou
 node /absolute/path/to/lucy-memory-mcp/src/mcp/bin.mjs
 ```
 
+The production HTTP entry point is `src/mcp/http.mjs`. It listens on `HOST`
+(`0.0.0.0` by default) and `PORT` (`3000` by default), accepts MCP requests at
+`POST /mcp`, and exposes unauthenticated `GET`/`HEAD /healthz`.
+
 ## Secure MCP host configuration
 
 Configure your host to launch the source entry point and inject the Lucy token through the host's secret store or protected environment. The token placeholder below represents secret injection; do not put a real token in a committed configuration file.
@@ -104,6 +108,11 @@ Use the base URL for the Lucy deployment you are authorized to access. Restart t
 | `LUCY_MEMORY_TRANSPORT_MODULE` | one transport | Advanced alternative: an absolute path or `file:` URL to a trusted custom transport module. |
 | `LUCY_MEMORY_TIMEOUT_MS` | no | Whole-number timeout from 1 to 300000 milliseconds. Default: `10000`. |
 | `LUCY_MEMORY_ALLOW_INSECURE_LOOPBACK` | no | Development only. Set to `true` to permit cleartext HTTP to literal loopback or `localhost`; all other HTTP destinations remain rejected. |
+| `HOST` | no | HTTP listener address. Default: `0.0.0.0`. |
+| `PORT` | no | HTTP listener port. Default: `3000`. |
+| `LUCY_MCP_HTTP_ALLOWED_ORIGINS` | no | Comma-separated exact absolute browser origins. Missing `Origin` remains valid for non-browser clients. |
+| `LUCY_MCP_HTTP_AUTH_MODE` | no | `none` (default) or staging-only `staging-static-bearer`. |
+| `LUCY_MCP_HTTP_STATIC_BEARER_TOKEN` | static mode | Bearer token for `staging-static-bearer`; that mode fails closed in production. |
 
 Set exactly one of `LUCY_MEMORY_BASE_URL` and `LUCY_MEMORY_TRANSPORT_MODULE`. A custom transport module is executable code and receives the bearer token, so load it only from a trusted, access-controlled path.
 
@@ -126,6 +135,8 @@ The supported package entry points are:
 | `@trylucy/agent-memory` | Client, HTTP transport, validation helpers, public types, and normalized errors |
 | `@trylucy/agent-memory/mcp` | MCP server factory and tool definitions |
 | `@trylucy/agent-memory/mcp/stdio` | Stdio runtime helpers |
+| `@trylucy/agent-memory/mcp/http` | Production Streamable HTTP runtime helpers |
+| `@trylucy/agent-memory/mcp/resource-server` | Hosted OAuth resource-server validation and RFC 9728 metadata |
 | `@trylucy/agent-memory/provider` | Memory-first routing and provider helpers |
 | `@trylucy/agent-memory/hermes` | Hermes configuration integration |
 
@@ -152,6 +163,27 @@ const result = await client.recall(JSON.stringify({
 ```
 
 The low-level client accepts canonical JSON strings rather than caller-owned JavaScript objects. See the [SDK reference](docs/sdk.md) for all public types, errors, and entry points.
+
+### Hosted OAuth resource server
+
+Hosted transports can publish `server.metadata` at their RFC 9728 protected-resource metadata endpoint and call `server.authorize` before dispatching a Lucy MCP tool:
+
+```js
+import { createOAuthResourceServer } from '@trylucy/agent-memory/mcp/resource-server';
+
+const server = createOAuthResourceServer({
+  resource: 'https://mcp-beta.example.com/mcp',
+  issuer: 'https://auth.example.com/',
+  jwksUri: 'https://auth.example.com/.well-known/jwks.json',
+  introspectionEndpoint: 'https://auth.example.com/oauth/introspect',
+  introspectionAuthorization: `Basic ${process.env.INTROSPECTION_CREDENTIAL}`,
+  resolveMembership: async ({ issuer, subject }) => lookupMembership({ issuer, subject }),
+  createHostedClient: async (authContext) =>
+    createHostedAgentMemoryClient({ authContext, exchangeUrl, serviceToken, transport }),
+});
+```
+
+Omit `jwksUri` for opaque-token introspection. JWT validation requires introspection as a fail-closed revocation check. Membership must be resolved from the validated issuer and subject; bearer claims and MCP arguments are not workspace authority. `createHostedClient` receives only the validated subject, server-derived workspace, and granted memory scopes. Never pass the caller bearer or untrusted claims into it.
 
 ## Security and privacy
 

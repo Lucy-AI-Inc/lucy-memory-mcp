@@ -1,5 +1,6 @@
 export { AgentMemoryClient } from './client.mjs';
 export { createLucyHttpTransport } from './http-transport.mjs';
+export { createHostedAgentMemoryClient } from './hosted-client.mjs';
 export {
   AgentMemoryError,
   AuthenticationFailureError,

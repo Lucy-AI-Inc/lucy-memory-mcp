@@ -61,7 +61,8 @@ test('npm pack dry-run allowlist excludes private governance and development art
   const names = result.files.map(({ path }) => path.replaceAll('\\', '/')).sort();
   for (const required of [
     'LICENSE', 'README.md', 'package.json', '.github/skills/lucy-memory-first/SKILL.md', 'src/client/index.mjs', 'src/client/index.d.ts',
-    'src/mcp/server.mjs', 'src/mcp/index.d.ts', 'src/mcp/stdio.mjs', 'src/mcp/stdio.d.ts', 'src/mcp/bin.mjs',
+    'src/mcp/server.mjs', 'src/mcp/index.d.ts', 'src/mcp/stdio.mjs', 'src/mcp/stdio.d.ts',
+    'src/mcp/http.mjs', 'src/mcp/http.d.ts', 'src/mcp/bin.mjs',
     'src/client/http-transport.mjs', 'src/client/http-transport.d.ts',
     'src/provider/index.mjs', 'src/integrations/hermes.mjs',
     'contracts/agent-manifest.json', 'src/clients/generic.mcp.json',
@@ -132,6 +133,7 @@ test('tarball installs in an empty consumer and exposes bin plus public exports'
     const client = await import('@trylucy/agent-memory');
     const mcp = await import('@trylucy/agent-memory/mcp');
     const stdio = await import('@trylucy/agent-memory/mcp/stdio');
+    const http = await import('@trylucy/agent-memory/mcp/http');
     const provider = await import('@trylucy/agent-memory/provider');
     const hermes = await import('@trylucy/agent-memory/hermes');
     if (typeof client.createLucyHttpTransport !== 'function') throw new Error('client export missing');
@@ -139,6 +141,7 @@ test('tarball installs in an empty consumer and exposes bin plus public exports'
     if (typeof stdio.main !== 'function' && typeof stdio.startLucyMemoryMcpStdio !== 'function' && typeof stdio.runLucyMemoryMcpStdio !== 'function') {
       throw new Error('stdio export missing');
     }
+    if (typeof http.startLucyMemoryMcpHttp !== 'function') throw new Error('http export missing');
     if (!provider.LucyMemoryFirstProvider && typeof provider.shouldRecall !== 'function') throw new Error('provider export missing');
     if (typeof hermes.installHermesLucyConfig !== 'function') throw new Error('hermes export missing');
     console.log('public-exports-ok');

@@ -1,10 +1,10 @@
 # Architecture and trust boundaries
 
-Lucy Memory MCP is a stateless stdio server in front of Lucy's Agent Memory HTTP API.
+Lucy Memory MCP is a stateless MCP server in front of Lucy's Agent Memory HTTP API.
 
 ```text
 MCP host
-  -> Lucy Memory MCP over stdio
+  -> Lucy Memory MCP over stdio or hosted Streamable HTTP
   -> AgentMemoryClient
   -> HTTPS transport
   -> Lucy Agent Memory HTTP v1
@@ -24,6 +24,11 @@ The server:
 - keeps stdout reserved for MCP protocol frames
 
 The stdio runtime supports MCP `2026-07-28` and compatibility with `2025-11-25`. Both protocol versions expose the same three tools.
+
+The hosted runtime uses `src/mcp/http.mjs`, listens on `HOST` and `PORT`, serves
+MCP at `/mcp`, and exposes unauthenticated liveness at `/healthz`. Its ECS
+deployment is a dedicated service and task definition; it is not a chat worker
+mode and shares neither worker IAM nor worker secrets.
 
 ### Client
 
@@ -81,6 +86,20 @@ host -> memory_proposal_status -> GET /proposals/{proposal_id}
 A pending proposal is not recallable memory. Once Lucy approves it, recall can return the active memory and its receipt.
 
 ## Trust boundaries
+
+### Hosted MCP operability boundary
+
+Hosted MCP telemetry is emitted only through the optional operability callback. Records use an
+allowlist of operation, outcome, bounded error/status, duration, trace ID, version evidence, and an
+optional salted workspace hash. Request arguments, response bodies, bearer tokens, raw errors, and
+memory content never enter that callback. Stdio protocol frames remain on stdout; the default
+structured sink uses stderr.
+
+Package version and hosted image evidence are separate fields. A package version is not evidence of
+the running image; deployment must supply an immutable image digest and/or full git SHA.
+
+The hosted MCP service is an independent failure domain. Its ECS service, ALB rule, kill switch, and
+rollback target must never reference the chat service.
 
 ### Credential
 

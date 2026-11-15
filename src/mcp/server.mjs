@@ -28,6 +28,8 @@ const SAFE_ERROR_MESSAGES = Object.freeze({
   version_conflict: 'The expected memory version does not match.',
   lifecycle_conflict: 'The memory lifecycle does not permit this operation.',
   rate_limit: 'Lucy rate limited the request.',
+  payload_too_large: 'The memory request is too large.',
+  admission_unavailable: 'Lucy admission control is temporarily unavailable.',
   upstream_unavailable: 'Lucy is temporarily unavailable.',
   timeout: 'The Lucy request timed out.',
   malformed_response: 'Lucy returned a malformed response.',
@@ -97,15 +99,76 @@ export function safeMcpError(error, operation) {
       ? candidateStatus
       : null;
     const requestId = safePublicErrorRequestId(mappedErrorRequestId(error));
+    const candidateRetryAfter = ownDataValue(error, 'retryAfterMs');
+    const retryAfter = Number.isSafeInteger(candidateRetryAfter) && candidateRetryAfter >= 0
+      ? candidateRetryAfter
+      : null;
     return {
       code,
       message: SAFE_ERROR_MESSAGES[code],
       retryable: operation === 'memory_propose' && RETRYABLE_ERROR_CODES.has(code),
       status,
       ...(requestId === null ? {} : { request_id: requestId }),
+      ...(retryAfter === null ? {} : { retry_after: retryAfter }),
     };
   } catch {
     return { ...INTERNAL_MCP_ERROR };
+  }
+}
+
+function admissionError(code, status, retryAfterMs = null) {
+  const error = new AgentMemoryError(code, { code, status });
+  if (retryAfterMs !== null) {
+    Object.defineProperty(error, 'retryAfterMs', { value: retryAfterMs, enumerable: true });
+  }
+  return error;
+}
+
+function validateAdmission(admission) {
+  if (admission === undefined) return Object.freeze({});
+  if (admission === null || typeof admission !== 'object') throw new TypeError('admission must be an object.');
+  const {
+    authority, context, maxBodyBytes = Infinity, maxConcurrentPerTask = Infinity, ceilings,
+  } = admission;
+  if (!Number.isSafeInteger(maxBodyBytes) || maxBodyBytes < 1) {
+    if (maxBodyBytes !== Infinity) throw new TypeError('maxBodyBytes must be a positive safe integer.');
+  }
+  if (!Number.isSafeInteger(maxConcurrentPerTask) || maxConcurrentPerTask < 1) {
+    if (maxConcurrentPerTask !== Infinity) throw new TypeError('maxConcurrentPerTask must be a positive safe integer.');
+  }
+  if (authority !== undefined) {
+    if (authority === null || typeof authority.acquire !== 'function' || typeof authority.release !== 'function') {
+      throw new TypeError('admission authority must implement acquire() and release().');
+    }
+    if (context === null || typeof context !== 'object'
+      || !['subject', 'workspace', 'client', 'task'].every((key) => typeof context[key] === 'string' && context[key].length > 0)) {
+      throw new TypeError('distributed admission requires subject, workspace, client, and task context.');
+    }
+  }
+  return Object.freeze({ authority, context, maxBodyBytes, maxConcurrentPerTask, ceilings });
+}
+
+function recordOperabilityEvent(onOperabilityEvent, operation, outcome, startedAt) {
+  if (typeof onOperabilityEvent !== 'function') return;
+  try {
+    const error = outcome === 'success' ? {} : {
+      outcome: 'error',
+      ...(['payload_too_large', 'rate_limit', 'admission_unavailable'].includes(outcome)
+        ? { error_code: outcome }
+        : {}),
+      ...(outcome === 'rate_limit' ? { throttled: true } : {}),
+    };
+    Promise.resolve(onOperabilityEvent(Object.freeze({
+      source: 'mcp',
+      event: 'tool',
+      operation,
+      tool: operation,
+      outcome: 'success',
+      duration_ms: Math.max(0, Math.round(performance.now() - startedAt)),
+      ...error,
+    }))).catch(() => {});
+  } catch {
+    // Observability must not change request behavior.
   }
 }
 
@@ -126,8 +189,15 @@ async function requireClient(client) {
   }
 }
 
-export async function createLucyMemoryMcpServer({ client, name = 'lucy-memory-mcp', version = '0.1.3' } = {}) {
+export async function createLucyMemoryMcpServer({
+  client, name = 'lucy-memory-mcp', version = '0.1.3', admission, onOperabilityEvent,
+} = {}) {
   const memoryClient = await requireClient(client);
+  if (onOperabilityEvent !== undefined && typeof onOperabilityEvent !== 'function') {
+    throw new TypeError('onOperabilityEvent must be a function.');
+  }
+  const limits = validateAdmission(admission);
+  let activeRequests = 0;
   const server = new Server(
     { name, version },
     { capabilities: { tools: {} }, instructions: usageSkillText() },
@@ -135,16 +205,57 @@ export async function createLucyMemoryMcpServer({ client, name = 'lucy-memory-mc
 
   server.setRequestHandler('tools/list', async () => ({ tools: LUCY_MEMORY_TOOLS }));
   server.setRequestHandler('tools/call', async ({ params }) => {
-    const argumentsJson = stableSerialize(params.arguments ?? {});
+    const startedAt = performance.now();
+    const metricOperation = Object.hasOwn(CANONICAL_CLIENT_OPERATIONS, params.name) ? params.name : null;
+    let lease;
+    let localSlot = false;
+    let outcome = 'internal_error';
     try {
       const operation = CANONICAL_CLIENT_OPERATIONS[params.name];
       if (operation === undefined) throw new ProtocolError(ProtocolErrorCode.InvalidParams, `Unknown tool: ${params.name}`);
+      const argumentsJson = stableSerialize(params.arguments ?? {});
+      if (Buffer.byteLength(argumentsJson, 'utf8') > limits.maxBodyBytes) {
+        throw admissionError('payload_too_large', 413);
+      }
+      if (activeRequests >= limits.maxConcurrentPerTask) {
+        throw admissionError('rate_limit', 429);
+      }
+      activeRequests += 1;
+      localSlot = true;
+      if (limits.authority) {
+        let allowed;
+        let admittedLease;
+        let retryAfterMs = null;
+        try {
+          const decision = await limits.authority.acquire(Object.freeze({
+            source: 'mcp',
+            operation: params.name,
+            ...limits.context,
+            ...(limits.ceilings === undefined ? {} : { ceilings: limits.ceilings }),
+          }));
+          if (decision === null || typeof decision !== 'object') throw new TypeError();
+          allowed = decision.allowed;
+          if (typeof allowed !== 'boolean') throw new TypeError();
+          if (allowed) {
+            admittedLease = decision.lease;
+            if (typeof admittedLease !== 'string' || admittedLease.length === 0) throw new TypeError();
+          } else {
+            const candidate = decision.retryAfterMs;
+            retryAfterMs = Number.isSafeInteger(candidate) && candidate >= 0 ? candidate : null;
+          }
+        } catch {
+          throw admissionError('admission_unavailable', 503);
+        }
+        if (!allowed) throw admissionError('rate_limit', 429, retryAfterMs);
+        lease = admittedLease;
+      }
       const result = await REFLECT_APPLY(operation, memoryClient, [argumentsJson]);
       // Keep billing correlation in tool text for acceptance/agents. Strip it from
       // structuredContent so frozen AM-01 outputSchema (additionalProperties:false) still validates.
       const { operation_id: _billingOperationId, ...am01Structured } = result && typeof result === 'object' && !Array.isArray(result)
         ? result
         : { ...(result ?? {}) };
+      outcome = 'success';
       return {
         content: [{ type: 'text', text: stableSerialize(result) }],
         structuredContent: am01Structured,
@@ -152,10 +263,23 @@ export async function createLucyMemoryMcpServer({ client, name = 'lucy-memory-mc
     } catch (error) {
       if (error instanceof ProtocolError) throw error;
       const payload = safeMcpError(error, params.name);
+      outcome = payload.code;
       return {
         isError: true,
         content: [{ type: 'text', text: stableSerialize(payload) }],
       };
+    } finally {
+      if (lease !== undefined) {
+        try {
+          await limits.authority.release(lease);
+        } catch {
+          outcome = 'admission_release_error';
+        }
+      }
+      if (localSlot) activeRequests -= 1;
+      if (metricOperation !== null) {
+        recordOperabilityEvent(onOperabilityEvent, metricOperation, outcome, startedAt);
+      }
     }
   });
 

@@ -20,6 +20,8 @@ Verify:
 - exactly one of `LUCY_MEMORY_BASE_URL` and `LUCY_MEMORY_TRANSPORT_MODULE` is set;
 - the base URL is HTTPS unless explicit loopback development mode is enabled;
 - a custom transport path is absolute or a `file:` URL.
+- optional body and per-task concurrency limits are positive integers;
+- an optional admission module is an absolute path or `file:` URL.
 
 ## Authentication or authorization failure
 
@@ -57,6 +59,21 @@ Recall current memory, review its latest version, and submit a new replacement p
 ## Rate limit, timeout, or unavailable service
 
 Honor a bounded retry delay. The built-in transport retries proposals only. Recall and status can consume credits, so decide explicitly whether an ambiguous call should be repeated.
+
+MCP admission rejections use `rate_limit`, status 429, and may include `retry_after` milliseconds.
+`admission_unavailable` means the configured shared authority failed or returned a malformed decision; it
+fails closed and Agent Memory was not called. Check the shared authority and its low-cardinality
+`source=mcp` metrics. Do not add a local-map fallback or unbounded retry loop.
+
+The optional `onOperabilityEvent` callback receives privacy-safe `event: "tool"` records. Admission
+failures use `outcome: "error"` and only the bounded `error_code` values `payload_too_large`,
+`rate_limit`, or `admission_unavailable`; `throttled: true` appears only for `rate_limit`. Callback
+exceptions and rejected promises never change tool results.
+
+For beta certification, configure candidate ceilings in the deployment-owned admission module, exercise
+multiple MCP instances/tasks against the same authority, and record MCP-tagged QPS, latency, errors, and
+rejections. Choose production ceilings from those measurements and approved spend policy; this package
+deliberately supplies no guessed spend or SLO values.
 
 ## `malformed_response`
 

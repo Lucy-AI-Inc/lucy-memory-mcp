@@ -1,7 +1,18 @@
-import { AgentMemoryClient, createLucyHttpTransport, type AgentMemoryTransport, type CanonicalRecallResponse } from '@trylucy/agent-memory';
+import {
+  AgentMemoryClient,
+  createHostedAgentMemoryClient,
+  createLucyHttpTransport,
+  type AgentMemoryTransport,
+  type CanonicalRecallResponse,
+} from '@trylucy/agent-memory';
 import type { Server } from '@modelcontextprotocol/server';
 import { createLucyMemoryMcpServer, LUCY_MEMORY_TOOL_NAMES, type LucyMemoryMcpServerOptions, type LucyMemoryToolName } from '@trylucy/agent-memory/mcp';
 import { startLucyMemoryMcpStdio, type LucyMemoryStdioRuntime } from '@trylucy/agent-memory/mcp/stdio';
+import {
+  createOAuthResourceServer,
+  createProtectedResourceMetadata,
+  type ProtectedResourceMetadata,
+} from '@trylucy/agent-memory/mcp/resource-server';
 import {
   installHermesLucyConfig,
   lucyMcpConfig,
@@ -13,11 +24,36 @@ import {
 
 const transport: AgentMemoryTransport = createLucyHttpTransport({ baseUrl: 'https://www.trylucy.ai' });
 const client = new AgentMemoryClient({ transport, token: 'compile-only-token', permissions: ['memory:read', 'memory:propose'] });
+const hostedClient = createHostedAgentMemoryClient({
+  authContext: {
+    subject: 'user_123',
+    workspaceId: 'workspace_123',
+    scopes: ['openid', 'memory:read', 'memory:propose'],
+  },
+  exchangeUrl: 'https://exchange.example.test/v1/agent-memory',
+  serviceToken: 'server-service-token',
+  transport,
+});
 const canonical: Promise<CanonicalRecallResponse> = client.recallCanonical(JSON.stringify({ query: 'name', scope: { kind: 'user' } }));
 const options: LucyMemoryMcpServerOptions = { client };
 const server: Promise<Server> = createLucyMemoryMcpServer(options);
 const tool: LucyMemoryToolName = LUCY_MEMORY_TOOL_NAMES[0];
 const runtime: Promise<LucyMemoryStdioRuntime> = startLucyMemoryMcpStdio({ client });
+const metadata: ProtectedResourceMetadata = createProtectedResourceMetadata({
+  resource: 'https://mcp.example.test/mcp',
+  authorizationServers: ['https://auth.example.test/'],
+});
+const resourceServer = createOAuthResourceServer({
+  resource: metadata.resource,
+  issuer: metadata.authorization_servers[0],
+  introspectionEndpoint: 'https://auth.example.test/introspect',
+  resolveMembership: async ({ subject }) => ({ userId: subject, workspaceId: 'workspace-1' }),
+  createHostedClient: async () => client,
+});
+void resourceServer.authorize({
+  authorization: 'Bearer caller-token',
+  operation: 'memory_recall',
+});
 const hermesOptions: HermesLucyInstallOptions = {
   profilePath: '/tmp/lucy-profile',
   artifact: { sourcePath: '/tmp/lucy-memory-mcp.mjs', nodePath: '/usr/bin/node', version: '1.0.0', expectedSourceGitSha: '0123456789abcdef0123456789abcdef01234567' },
@@ -65,4 +101,4 @@ void generatedMcpConfig.x_lucy_memory_artifact.receipt_path;
 void uninstallHermesLucyConfig('/tmp/lucy-profile/config.yaml', { profilePath: hermesOptions.profilePath });
 void resetHermesLucyBackup('/tmp/lucy-profile/config.yaml', { profilePath: hermesOptions.profilePath });
 void resetHermesLucyArtifacts('/tmp/lucy-profile/config.yaml', { profilePath: hermesOptions.profilePath });
-void server; void tool; void runtime;
+void server; void tool; void runtime; void metadata; void hostedClient;

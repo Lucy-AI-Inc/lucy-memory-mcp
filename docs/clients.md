@@ -6,6 +6,10 @@ Lucy Memory MCP runs as a stdio process. Every supported host launches the same 
 - `memory_propose`
 - `memory_proposal_status`
 
+Hosted MCP deployments must not use the stdio credential flow below. They must exchange the validated client identity for a separate, short-lived Lucy credential as described in [Hosted credential exchange](#hosted-credential-exchange).
+
+For hosted Streamable HTTP clients, the MCP endpoint is distinct from the Agent Memory API base URL. See [Private-beta certification](private-beta-certification.md#mcp-url-versus-agent-memory-url); never use `LUCY_MEMORY_BASE_URL` as a remote client's MCP endpoint.
+
 ## Before you begin
 
 You need a trusted checkout, Node.js `>=20 <25`, and a Lucy credential for the permissions you intend to use.
@@ -109,6 +113,50 @@ Minimal valid request: `{ "query": "database", "scope": { "kind": "user" } }`.
 - Distinguish a successful zero-match response from authentication, authorization, rate-limit, timeout, and service errors.
 
 Never paste a credential into a tool argument, memory, justification, log, issue, or diagnostic bundle.
+
+## Hosted credential exchange
+
+After the hosted MCP resource server validates the client's OAuth bearer, call `createHostedAgentMemoryClient` with that trusted server auth context. Do not construct the context from request JSON, headers, query parameters, or unvalidated token claims.
+
+```js
+const client = await createHostedAgentMemoryClient({
+  authContext: {
+    subject: validatedAuth.subject,
+    workspaceId: validatedAuth.workspaceId,
+    scopes: validatedAuth.scopes,
+  },
+  exchangeUrl: process.env.LUCY_CREDENTIAL_EXCHANGE_URL,
+  serviceToken: process.env.LUCY_CREDENTIAL_EXCHANGE_SERVICE_TOKEN,
+  transport: createLucyHttpTransport({ baseUrl: process.env.LUCY_MEMORY_BASE_URL }),
+});
+```
+
+The factory sends this HTTPS request using the server-to-server service token, never the client bearer:
+
+```http
+POST <LUCY_CREDENTIAL_EXCHANGE_URL>
+Authorization: Bearer <server service credential>
+Content-Type: application/json
+
+{
+  "subject": "<validated OAuth subject>",
+  "workspace_id": "<validated workspace>",
+  "scopes": ["memory:read", "memory:propose"]
+}
+```
+
+Only validated `memory:read` and `memory:propose` scopes are requested. The frontend/exchange counterpart must independently authorize the subject and workspace, mint a short-lived credential limited to those requested scopes, and return:
+
+```json
+{
+  "access_token": "<short-lived Lucy credential>",
+  "token_type": "Bearer",
+  "expires_at": "2026-08-23T00:05:00.000Z",
+  "scopes": ["memory:read", "memory:propose"]
+}
+```
+
+The returned scopes may be a nonempty subset of the request and must not include any other permission. `expires_at` must be in the future and no more than 15 minutes from exchange. The exchanged token must differ from the exchange service credential. Any network error, non-2xx response, malformed/expired/over-scoped response, non-short-lived credential, or equal token fails closed before `AgentMemoryClient` can call Agent Memory. The resource server must keep the client bearer inside its authentication boundary and prove there that it never reaches this bearer-free hosted-client seam or Agent Memory upstream.
 
 ## Disconnect
 

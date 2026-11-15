@@ -46,9 +46,17 @@
       "types": "./src/mcp/index.d.ts",
       "import": "./src/mcp/server.mjs"
     },
+    "./mcp/resource-server": {
+      "types": "./src/mcp/resource-server.d.ts",
+      "import": "./src/mcp/resource-server.mjs"
+    },
     "./mcp/stdio": {
       "types": "./src/mcp/stdio.d.ts",
       "import": "./src/mcp/stdio.mjs"
+    },
+    "./mcp/http": {
+      "types": "./src/mcp/http.d.ts",
+      "import": "./src/mcp/http.mjs"
     },
     "./provider": {
       "types": "./src/provider/index.d.ts",
@@ -57,15 +65,23 @@
     "./hermes": {
       "types": "./src/integrations/hermes.d.ts",
       "import": "./src/integrations/hermes.mjs"
+    },
+    "./operability": {
+      "types": "./src/operability.d.ts",
+      "import": "./src/operability.mjs"
     }
   },
   "scripts": {
+    "cert:private-beta": "node scripts/private-beta-certify.mjs",
     "check:full": "npm test && npm run test:types && npm run validate && npm run verify:hashes && npm run scan:secrets && npm audit --audit-level=moderate && npm pack --dry-run",
     "hashes": "node scripts/generate-hashes.mjs --write",
     "test": "node --test",
     "test:mcp": "node --test tests/mcp/core-mcp-server.test.mjs",
+    "test:mcp:http": "node --test tests/mcp/http-server.test.mjs",
     "test:e2e": "node --test tests/e2e/wave4-isolated-e2e.test.mjs",
+    "test:adversarial": "node --test tests/adversarial/hosted-mcp-adversarial.test.mjs",
     "test:package": "node --test tests/package/package-contents.test.mjs",
+    "drill:hosted-mcp": "node scripts/hosted-mcp-drill.mjs",
     "test:types": "tsc --noEmit -p tests/types/tsconfig.json",
     "validate": "npm run validate:contract && npm run validate:schemas",
     "validate:contract": "node scripts/validate-contract.mjs",

@@ -1,5 +1,22 @@
 # Recovery and retry behavior
 
+## Hosted MCP kill switch and rollback
+
+Incident owner: **TBD**.
+
+1. Run `pwsh deploy/hosted-mcp/kill-switch.ps1 -Service lucy-memory-mcp-production`
+   to inspect the no-change plan.
+2. Prefer the ALB fixed-response mode for a stable HTTP `503` body with code
+   `hosted_mcp_disabled`, or use ECS scale-down for the explicitly named hosted MCP service.
+3. Select a previous task definition whose image uses an immutable `@sha256:` digest. Record package
+   version, current digest, previous digest, and git SHA independently.
+4. Update only the hosted MCP service to that task definition; do not redeploy chat.
+5. Run `npm run drill:hosted-mcp` before and after procedural changes. It is local and dry-run only.
+
+`deploy/hosted-mcp/cloudwatch-dashboard.json` and `alarms.json` cover authentication failures,
+tool p95 overhead, upstream errors, and throttles. Their thresholds are design targets, not claims
+about live SLO attainment. Live ECS/ALB rollback proof requires the isolated hosted service. and retry behavior
+
 Lucy Memory MCP does not create a local durable fallback. Recovery uses Lucy proposal IDs, idempotency keys, and a fresh recall of authoritative state.
 
 ## Lost proposal response

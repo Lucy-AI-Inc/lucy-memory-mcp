@@ -1,5 +1,6 @@
 import type { Readable, Writable } from 'node:stream';
 import type { AgentMemoryClient } from '../client/index.js';
+import type { LucyMemoryAdmissionOptions, LucyMemoryMcpOperabilityEvent } from './index.js';
 
 export interface LucyMemoryStdioRuntime {
   readonly close: () => Promise<void>;
@@ -9,6 +10,8 @@ export interface LucyMemoryStdioOptions {
   stdin?: Readable;
   stdout?: Writable;
   maxBufferSize?: number;
+  admission?: LucyMemoryAdmissionOptions;
+  onOperabilityEvent?: (event: LucyMemoryMcpOperabilityEvent) => void | Promise<void>;
 }
 export function modulePathFromUrl(url: URL | string): string;
 export function startLucyMemoryMcpStdio(options: LucyMemoryStdioOptions): Promise<LucyMemoryStdioRuntime>;

@@ -1,0 +1,9 @@
+{
+  "design_targets_not_live_slos": true,
+  "alarms": [
+    {"metric": "AuthenticationFailure", "statistic": "Sum", "period_seconds": 300, "threshold": 5},
+    {"metric": "DurationMs", "statistic": "p95", "period_seconds": 300, "threshold": 25, "dimensions": {"event": "tool"}},
+    {"metric": "UpstreamError", "statistic": "Sum", "period_seconds": 300, "threshold": 5},
+    {"metric": "Throttled", "statistic": "Sum", "period_seconds": 300, "threshold": 5}
+  ]
+}

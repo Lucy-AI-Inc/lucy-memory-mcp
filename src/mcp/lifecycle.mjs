@@ -1,6 +1,7 @@
 const SAFE_MESSAGES = Object.freeze({
   CONFIGURATION_ERROR: 'Lucy Memory MCP configuration is invalid.',
   TRANSPORT_LOAD_ERROR: 'Lucy Memory MCP transport could not be loaded.',
+  ADMISSION_LOAD_ERROR: 'Lucy Memory MCP admission control could not be loaded.',
   STARTUP_ERROR: 'Lucy Memory MCP could not start.',
   SHUTDOWN_ERROR: 'Lucy Memory MCP could not shut down cleanly.',
 });

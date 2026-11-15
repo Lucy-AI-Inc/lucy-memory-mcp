@@ -33,6 +33,25 @@ The built-in transport requires HTTPS except for an explicit development-only lo
 
 Configure a base URL you control and trust. Do not use a URL shortener or an endpoint that redirects requests to another origin.
 
+The hosted ECS deployment runs in private subnets without a public IP. Its task
+security group has no open egress and permits TCP 443 only to an
+operator-maintained prefix list for the shared admission authority and approved
+Agent Memory/auth destinations, plus private AWS endpoints. The subnet
+route must also traverse a domain-filtering firewall that enforces the approved
+TLS SNI destinations. Neither a prefix list nor a security group alone provides
+hostname enforcement.
+
+The ALB-associated WAF blocks raw request bodies above the configured ceiling
+before parsing and applies a configured per-source-IP request ceiling. The task
+also enforces canonical argument bytes, per-task concurrency, and the injected
+shared-authority admission module. Production ceilings are operator-supplied;
+the repository does not guess them.
+
+The execution role can read only explicit `lucy/mcp/` secret ARNs. The task
+role has no AWS permissions. Do not add Supabase, Postgres, chat-worker, or
+shared application credentials to either role or task definition. Production
+does not receive the staging static bearer secret.
+
 ## Local files
 
 Hermes profiles, backups, receipts, and projection output can contain sensitive metadata or recalled content. Keep them in directories owned by the intended account with restrictive permissions, and do not treat generated local files as Lucy authority.
@@ -40,6 +59,12 @@ Hermes profiles, backups, receipts, and projection output can contain sensitive 
 Secure projection reads and writes are supported on Linux with `/proc/self/fd`. They require a private destination owned by the effective user and reject symlinks, unsafe writable ancestors, and foreign-owned components. Other platforms fail closed.
 
 ## Logging and diagnostics
+
+Hosted operability records are allowlisted at construction time rather than redacted after capture.
+Allowed values are operation name, event/outcome, normalized error code, HTTP status, duration,
+trace ID, package/image version evidence, metric values, and an optional salted workspace hash.
+Never pass request arguments, memory bodies, recall queries, justification, provenance, results,
+authorization headers, bearer tokens, raw upstream bodies, or raw exception messages to telemetry. and diagnostics
 
 Safe diagnostic fields include normalized error codes, HTTP status, bounded request IDs, proposal IDs, and memory IDs/versions. Avoid full environment dumps, raw upstream bodies, token values, customer content, and absolute private paths.
 

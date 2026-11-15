@@ -20,6 +20,7 @@ pnpm-debug.log*
 
 # Test, coverage, and build output
 coverage/
+.artifacts/adversarial/
 .nyc_output/
 dist/
 build/

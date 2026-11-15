@@ -24,6 +24,28 @@ npm run check:full
 
 This includes the full test suite (including MCP, end-to-end, and package-consumer tests), type, contract, schema, hash, secret, dependency audit, and package checks.
 
+### Adversarial hosted-MCP harness
+
+Run the deterministic LUC-1077 local double with:
+
+```bash
+npm run test:adversarial
+```
+
+Staging is opt-in with `LUCY_ADVERSARIAL_TARGET=staging`. It refuses to start
+unless the target is HTTPS, both workspaces are distinct and disposable,
+production-like names are absent, connector/service/harness SHAs are pinned,
+and `LUCY_ADVERSARIAL_ADAPTER_MODULE` exports
+`createAdversarialTarget(config, context)`.
+
+Required staging variables are
+`LUCY_ADVERSARIAL_BASE_URL`, `LUCY_ADVERSARIAL_AUDIENCE`,
+`LUCY_ADVERSARIAL_WORKSPACE_A`, `LUCY_ADVERSARIAL_WORKSPACE_B`,
+`LUCY_ADVERSARIAL_DISPOSABLE=true`, `LUCY_ADVERSARIAL_CONNECTOR_SHA`,
+`LUCY_ADVERSARIAL_SERVICE_SHA`, and `LUCY_ADVERSARIAL_HARNESS_SHA`.
+Generated sanitized evidence belongs under `.artifacts/adversarial/`, which is
+intentionally ignored.
+
 CI intentionally runs one Linux job on Node.js 24. Before a release or after risky platform/runtime changes, run `npm run check:full` locally on Windows, macOS, and Linux with Node.js 20, 22, and 24 as applicable. This explicit local matrix replaces paid cross-platform jobs on every change.
 
 On POSIX systems, run permission-sensitive tests with a conventional `0022` umask:
