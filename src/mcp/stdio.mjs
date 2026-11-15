@@ -2,7 +2,7 @@
 import { StdioServerTransport, serveStdio } from '@modelcontextprotocol/server/stdio';
 import { fileURLToPath } from 'node:url';
 import { AgentMemoryClient } from '../client/client.mjs';
-import { loadLucyMemoryMcpConfig, resolveLucyMemoryTransport } from './config.mjs';
+import { loadLucyMemoryMcpConfig, resolveLucyMemoryAdmission, resolveLucyMemoryTransport } from './config.mjs';
 import { createShutdownController, runLifecycleStage, safeLifecycleDiagnostic } from './lifecycle.mjs';
 import { createLucyMemoryMcpServer } from './server.mjs';
 
@@ -10,10 +10,12 @@ export function modulePathFromUrl(url) {
   return fileURLToPath(url);
 }
 
-export async function startLucyMemoryMcpStdio({ client, stdin = process.stdin, stdout = process.stdout, maxBufferSize = 1_048_576 } = {}) {
+export async function startLucyMemoryMcpStdio({
+  client, admission, observer, stdin = process.stdin, stdout = process.stdout, maxBufferSize = 1_048_576,
+} = {}) {
   const transport = new StdioServerTransport(stdin, stdout, { maxBufferSize });
   const handle = serveStdio(
-    () => createLucyMemoryMcpServer({ client }),
+    () => createLucyMemoryMcpServer({ client, admission, observer }),
     { transport, legacy: 'serve' },
   );
   return Object.freeze({ close: async () => handle.close() });
@@ -22,13 +24,16 @@ export async function startLucyMemoryMcpStdio({ client, stdin = process.stdin, s
 export async function runLucyMemoryMcpStdio({ environment = process.env, stdin = process.stdin, stdout = process.stdout } = {}) {
   const config = await runLifecycleStage('CONFIGURATION_ERROR', () => loadLucyMemoryMcpConfig(environment));
   const transport = await runLifecycleStage('TRANSPORT_LOAD_ERROR', () => resolveLucyMemoryTransport(config));
+  const admission = await resolveLucyMemoryAdmission(config);
   const client = new AgentMemoryClient({
     transport,
     token: config.token,
     permissions: config.permissions,
     timeoutMs: config.timeoutMs,
   });
-  return runLifecycleStage('STARTUP_ERROR', () => startLucyMemoryMcpStdio({ client, stdin, stdout }));
+  return runLifecycleStage('STARTUP_ERROR', () => startLucyMemoryMcpStdio({
+    client, ...admission, stdin, stdout,
+  }));
 }
 
 export async function main({ environment = process.env, stdin = process.stdin, stdout = process.stdout, stderr = process.stderr,

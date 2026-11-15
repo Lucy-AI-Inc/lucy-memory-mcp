@@ -8,6 +8,7 @@ export interface McpSafeError {
   retryable: boolean;
   status: number | null;
   request_id?: `req_${string}`;
+  retry_after?: number;
 }
 export interface LucyMemoryToolDefinition {
   readonly name: LucyMemoryToolName;
@@ -20,6 +21,40 @@ export interface LucyMemoryMcpServerOptions {
   client: AgentMemoryClient;
   name?: string;
   version?: string;
+  admission?: LucyMemoryAdmissionOptions;
+  observer?: (event: LucyMemoryMcpMetric) => void | Promise<void>;
+}
+export interface LucyMemoryAdmissionContext {
+  readonly subject: string;
+  readonly workspace: string;
+  readonly client: string;
+  readonly task: string;
+}
+export interface LucyMemoryAdmissionDecision {
+  readonly allowed: boolean;
+  readonly lease?: string;
+  readonly retryAfterMs?: number;
+}
+export interface LucyMemoryAdmissionAuthority {
+  acquire(request: Readonly<LucyMemoryAdmissionContext & {
+    source: 'mcp';
+    operation: LucyMemoryToolName;
+    ceilings?: Readonly<Record<string, number>>;
+  }>): Promise<LucyMemoryAdmissionDecision>;
+  release(lease: string): Promise<void>;
+}
+export interface LucyMemoryAdmissionOptions {
+  authority?: LucyMemoryAdmissionAuthority;
+  context?: LucyMemoryAdmissionContext;
+  maxBodyBytes?: number;
+  maxConcurrentPerTask?: number;
+  ceilings?: Readonly<Record<string, number>>;
+}
+export interface LucyMemoryMcpMetric {
+  readonly source: 'mcp';
+  readonly operation: LucyMemoryToolName;
+  readonly outcome: string;
+  readonly duration_ms: number;
 }
 export const LUCY_MEMORY_TOOL_NAMES: readonly LucyMemoryToolName[];
 export const LUCY_MEMORY_TOOLS: readonly LucyMemoryToolDefinition[];

@@ -113,6 +113,54 @@ If the header is missing or invalid, the transport does not invent a delay. Vali
 
 Retries do not replace idempotency. Every durable proposal still needs a UUID `idempotency_key`.
 
+## MCP admission and shared limiter contract
+
+The MCP `tools/call` boundary supports three independent controls:
+
+- `maxBodyBytes`: UTF-8 bytes of the canonical, stable JSON serialization of tool arguments;
+- `maxConcurrentPerTask`: an immediate per-server/task in-flight cap (requests shed rather than queue);
+- an injected shared authority for distributed subject/workspace/client limits.
+
+Stdio deployments may set `LUCY_MEMORY_MAX_BODY_BYTES`,
+`LUCY_MEMORY_MAX_CONCURRENT_PER_TASK`, and `LUCY_MEMORY_ADMISSION_MODULE`.
+No production beta ceiling is supplied by this package: deployment owners set measured ceilings after the
+beta certification harness establishes actual QPS, latency, error, and spend characteristics.
+
+An admission module exports `createAdmission` (or a default factory) returning:
+
+```js
+{
+  admission: {
+    authority: {
+      async acquire({ source, operation, subject, workspace, client, task, ceilings }) {
+        return { allowed: true, lease: 'opaque-lease' };
+        // Or: { allowed: false, retryAfterMs: 250 }
+      },
+      async release(lease) {}
+    },
+    context: { subject, workspace, client, task },
+    ceilings
+  },
+  observer({ source, operation, outcome, duration_ms }) {}
+}
+```
+
+The authority is the shared contract for MCP and the frontend/product API counterpart. Both must derive
+trusted subject, workspace, and client dimensions from authenticated hosting context, use the same shared
+backend, and atomically admit against configured ceilings. The MCP runtime never substitutes a process map.
+Authority errors and malformed decisions fail closed before Agent Memory is called. Accepted decisions must
+return an opaque lease, which is released after the call. Rejections return stable `rate_limit`/429 semantics
+with optional `retry_after` milliseconds. The MCP layer never retries an admission rejection or Agent Memory
+call; only the existing idempotent proposal transport retry discipline applies.
+
+The observer fields are intentionally low-cardinality (`source: "mcp"`, operation, outcome, duration) so
+dashboards can separate MCP Agent Memory QPS/latency/errors from chat without recording memory content,
+keys, subjects, workspaces, request IDs, or exception text.
+
+`maxBodyBytes` protects canonical tool arguments. Hosted ingress must additionally enforce a raw request-body
+limit before parsing. WAF/edge rules, shared authority deployment, and hosted wiring remain blocked on
+LUC-1071; these source hooks do not claim deployed infrastructure.
+
 ## Timeout and abort
 
 The `AgentMemoryClient` applies its own timeout:

@@ -88,8 +88,8 @@ function proposalResponseFor(request) {
   };
 }
 
-async function harnessForAgentClient(t, agentClient) {
-  const server = await createLucyMemoryMcpServer({ client: agentClient });
+async function harnessForAgentClient(t, agentClient, options = {}) {
+  const server = await createLucyMemoryMcpServer({ client: agentClient, ...options });
   const [clientTransport, serverTransport] = InMemoryTransport.createLinkedPair();
   const client = new Client({ name: 'am03-in-memory-test', version: '1.0.0' });
   await server.connect(serverTransport);
@@ -104,6 +104,154 @@ async function inMemoryHarness(t, agentTransport, { permissions = ['memory:read'
     transport: agentTransport, token: 'test-token', permissions, timeoutMs,
   }));
 }
+
+test('canonical body and task concurrency limits reject before Agent Memory', async (t) => {
+  let upstreamCalls = 0;
+  let unblock;
+  const blocked = new Promise((resolve) => { unblock = resolve; });
+  const client = await harnessForAgentClient(t, new AgentMemoryClient({
+    token: 'test-token',
+    permissions: ['memory:read'],
+    timeoutMs: 1000,
+    transport: async () => {
+      upstreamCalls += 1;
+      await blocked;
+      return response(recallResponse());
+    },
+  }), { admission: { maxBodyBytes: 200, maxConcurrentPerTask: 1 } });
+
+  const first = client.callTool({ name: 'memory_recall', arguments: recallRequest() });
+  await new Promise((resolve) => setImmediate(resolve));
+  const concurrencyRejected = await client.callTool({ name: 'memory_recall', arguments: recallRequest() });
+  assert.deepEqual(errorPayload(concurrencyRejected), {
+    code: 'rate_limit', message: 'Lucy rate limited the request.', retryable: false, status: 429,
+  });
+  const bodyRejected = await client.callTool({
+    name: 'memory_recall',
+    arguments: { query: 'x'.repeat(300), scope: USER },
+  });
+  assert.deepEqual(errorPayload(bodyRejected), {
+    code: 'payload_too_large', message: 'The memory request is too large.', retryable: false, status: 413,
+  });
+  assert.equal(upstreamCalls, 1);
+  unblock();
+  await first;
+});
+
+test('shared authority enforces a cap across server instances and emits MCP metrics', async (t) => {
+  let inFlight = 0;
+  let upstreamCalls = 0;
+  let unblock;
+  const blocked = new Promise((resolve) => { unblock = resolve; });
+  const authority = {
+    async acquire(request) {
+      assert.equal(request.source, 'mcp');
+      if (inFlight >= 1) return { allowed: false, retryAfterMs: 250 };
+      inFlight += 1;
+      return { allowed: true, lease: `lease-${inFlight}` };
+    },
+    async release() { inFlight -= 1; },
+  };
+  const metrics = [];
+  const makeAgentClient = () => new AgentMemoryClient({
+    token: 'test-token',
+    permissions: ['memory:read'],
+    timeoutMs: 1000,
+    transport: async () => {
+      upstreamCalls += 1;
+      await blocked;
+      return response(recallResponse());
+    },
+  });
+  const context = { subject: 'subject-1', workspace: 'workspace-1', client: 'client-1', task: 'task-1' };
+  const firstClient = await harnessForAgentClient(t, makeAgentClient(), {
+    admission: { authority, context },
+    observer: (event) => metrics.push(event),
+  });
+  const secondClient = await harnessForAgentClient(t, makeAgentClient(), {
+    admission: { authority, context: { ...context, task: 'task-2' } },
+    observer: (event) => metrics.push(event),
+  });
+
+  const first = firstClient.callTool({ name: 'memory_recall', arguments: recallRequest() });
+  await new Promise((resolve) => setImmediate(resolve));
+  const rejected = await secondClient.callTool({ name: 'memory_recall', arguments: recallRequest() });
+  assert.deepEqual(errorPayload(rejected), {
+    code: 'rate_limit',
+    message: 'Lucy rate limited the request.',
+    retryable: false,
+    status: 429,
+    retry_after: 250,
+  });
+  assert.equal(upstreamCalls, 1);
+  unblock();
+  await first;
+  assert.equal(metrics.some(({ source, operation, outcome }) => (
+    source === 'mcp' && operation === 'memory_recall' && outcome === 'rate_limit'
+  )), true);
+  assert.equal(metrics.every((event) => Object.keys(event).sort().join(',') === 'duration_ms,operation,outcome,source'), true);
+});
+
+test('shared authority failures are fail-closed without upstream calls', async (t) => {
+  let upstreamCalls = 0;
+  const client = await harnessForAgentClient(t, new AgentMemoryClient({
+    token: 'test-token',
+    permissions: ['memory:read'],
+    timeoutMs: 1000,
+    transport: async () => {
+      upstreamCalls += 1;
+      return response(recallResponse());
+    },
+  }), {
+    admission: {
+      context: { subject: 's', workspace: 'w', client: 'c', task: 't' },
+      authority: { async acquire() { throw new Error('private'); }, async release() {} },
+    },
+  });
+  const rejected = await client.callTool({ name: 'memory_recall', arguments: recallRequest() });
+  assert.deepEqual(errorPayload(rejected), {
+    code: 'admission_unavailable',
+    message: 'Lucy admission control is temporarily unavailable.',
+    retryable: false,
+    status: 503,
+  });
+  assert.equal(upstreamCalls, 0);
+});
+
+test('hostile admission decisions and async observer failures stay contained', async (t) => {
+  let upstreamCalls = 0;
+  const client = await harnessForAgentClient(t, new AgentMemoryClient({
+    token: 'test-token',
+    permissions: ['memory:read'],
+    timeoutMs: 1000,
+    transport: async () => {
+      upstreamCalls += 1;
+      return response(recallResponse());
+    },
+  }), {
+    admission: {
+      context: { subject: 's', workspace: 'w', client: 'c', task: 't' },
+      authority: {
+        async acquire() {
+          return Object.defineProperty({}, 'allowed', {
+            get() { throw new Error('private'); },
+          });
+        },
+        async release() {},
+      },
+    },
+    observer: async () => { throw new Error('private'); },
+  });
+  const rejected = await client.callTool({ name: 'memory_recall', arguments: recallRequest() });
+  assert.deepEqual(errorPayload(rejected), {
+    code: 'admission_unavailable',
+    message: 'Lucy admission control is temporarily unavailable.',
+    retryable: false,
+    status: 503,
+  });
+  await new Promise((resolve) => setImmediate(resolve));
+  assert.equal(upstreamCalls, 0);
+});
 
 test('core MCP server exports exactly the three frozen Lucy memory tools', async () => {
   assert.equal(PACKAGE.dependencies['@modelcontextprotocol/server'], PATCHED_MCP_SDK_VERSION);
@@ -738,6 +886,22 @@ test('startup failures emit only deterministic diagnostics and never contaminate
   assert.equal(Buffer.concat(stdoutChunks).length, 0);
   assert.equal(diagnostics.join(''), 'TRANSPORT_LOAD_ERROR: Lucy Memory MCP transport could not be loaded.\n');
   assert.doesNotMatch(diagnostics.join(''), /bearer|api[_-]?key|authorization|postgres|\/home\/private/i);
+
+  const admissionDiagnostics = [];
+  const admissionExits = [];
+  await main({
+    environment: {
+      LUCY_MEMORY_TOKEN: 'EXAMPLE_NOT_A_SECRET',
+      LUCY_MEMORY_PERMISSIONS: 'memory:read,memory:propose',
+      LUCY_MEMORY_TRANSPORT_MODULE: new URL('./mock/space%20path/transport%20%23module.mjs', import.meta.url).href,
+      LUCY_MEMORY_ADMISSION_MODULE: new URL('./mock/missing-admission.mjs', import.meta.url).href,
+    },
+    stdin: new PassThrough(), stdout: new PassThrough(),
+    stderr: { write: (value) => { admissionDiagnostics.push(String(value)); return true; } },
+    exit: (code) => admissionExits.push(code),
+  });
+  assert.deepEqual(admissionExits, [1]);
+  assert.equal(admissionDiagnostics.join(''), 'ADMISSION_LOAD_ERROR: Lucy Memory MCP admission control could not be loaded.\n');
 
   const configDiagnostics = [];
   const configExits = [];
