@@ -38,6 +38,7 @@ When both inputs contain numeric `p95_ms` and `error_rate` fields, the evidence 
 These commits may be cited as local proof, but they do not satisfy hosted gates:
 
 - LUC-1073 OAuth resource server: `bf9fdecb8b6854909e5023e06d5c1f8f1baeaec4` (focused OAuth tests 6/6; `check:full` 284 total, 204 passed, 80 platform-skipped, 0 failed)
+- LUC-1075 MCP protection controls: `1866b565f5d7920103f709aa3707e93be44ca7a2` (MCP tests 47/47; types, `check:full`, validation, hashes, secrets, audit, and package dry-run passed)
 - LUC-1077 adversarial harness: `7acfb7274154a012337a197585e86db08cd60f19` (`test:adversarial` 11/11; `check:full` 289 total, 209 passed, 80 skipped, 0 failed)
 - LUC-1074 MCP exchange half: `7537184e701ba39c606b988c05a3406387aacd68`, bearer-free correction `a1fa9534f92bf7e5fc94eed29e9611561f612cfa` (trusted context is limited to `subject`, `workspaceId`, and `scopes`; mocked HTTP recall/propose and fail-closed exchange validation)
 - LUC-1076 operability controls: `b64873f343ded5e7cdf4d5e2218d5a57b270e762` (local telemetry, kill-switch, rollback, and alarm/drill controls)
@@ -45,6 +46,8 @@ These commits may be cited as local proof, but they do not satisfy hosted gates:
 The LUC-1077 fixtures require no change for the bearer-free LUC-1074 contract: identity remains derived at the validated grant boundary and the no-passthrough assertions remain aligned. This is compatibility evidence, not hosted proof.
 
 LUC-1073 source proof does not satisfy hosted OAuth certification. Route wiring from LUC-1070, configured LUC-1072 values and membership resolver, the deployed exchange, and staging execution evidence remain required.
+
+LUC-1075 source proof does not satisfy hosted protection certification. LUC-1070 raw-body wiring, LUC-1071 WAF and edge controls, product shared-authority integration, deployed two-instance evidence, and operator-configured ceilings remain required.
 
 The LUC-1069 topology decision record pins source baselines only: public MCP `a84db7211b104a80311cc7a610cfc228764c8a75`, internal MCP `db81d27ce159cdeb322735eb6ccb02c0691a1f86`, and product `c475c42c7408aac4a25e47ef52269f2f9065cdb0`. Dedicated isolated ECS Fargate is the selected topology. These are not deployment evidence.
 
