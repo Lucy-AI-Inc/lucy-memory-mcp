@@ -68,6 +68,7 @@
     }
   },
   "scripts": {
+    "cert:private-beta": "node scripts/private-beta-certify.mjs",
     "check:full": "npm test && npm run test:types && npm run validate && npm run verify:hashes && npm run scan:secrets && npm audit --audit-level=moderate && npm pack --dry-run",
     "hashes": "node scripts/generate-hashes.mjs --write",
     "test": "node --test",

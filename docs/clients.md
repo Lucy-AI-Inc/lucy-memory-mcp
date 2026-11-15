@@ -8,6 +8,8 @@ Lucy Memory MCP runs as a stdio process. Every supported host launches the same 
 
 Hosted MCP deployments must not use the stdio credential flow below. They must exchange the validated client identity for a separate, short-lived Lucy credential as described in [Hosted credential exchange](#hosted-credential-exchange).
 
+For hosted Streamable HTTP clients, the MCP endpoint is distinct from the Agent Memory API base URL. See [Private-beta certification](private-beta-certification.md#mcp-url-versus-agent-memory-url); never use `LUCY_MEMORY_BASE_URL` as a remote client's MCP endpoint.
+
 ## Before you begin
 
 You need a trusted checkout, Node.js `>=20 <25`, and a Lucy credential for the permissions you intend to use.
