@@ -98,7 +98,9 @@ export async function resolveLucyMemoryAdmission(config) {
     }
     return Object.freeze({
       admission: Object.freeze({ ...config.admission, ...resolved.admission }),
-      ...(typeof resolved.observer === 'function' ? { observer: resolved.observer } : {}),
+      ...(typeof resolved.onOperabilityEvent === 'function'
+        ? { onOperabilityEvent: resolved.onOperabilityEvent }
+        : {}),
     });
   });
 }

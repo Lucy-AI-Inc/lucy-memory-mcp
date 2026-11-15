@@ -148,14 +148,24 @@ function validateAdmission(admission) {
   return Object.freeze({ authority, context, maxBodyBytes, maxConcurrentPerTask, ceilings });
 }
 
-function recordMetric(observer, operation, outcome, startedAt) {
-  if (typeof observer !== 'function') return;
+function recordOperabilityEvent(onOperabilityEvent, operation, outcome, startedAt) {
+  if (typeof onOperabilityEvent !== 'function') return;
   try {
-    Promise.resolve(observer(Object.freeze({
+    const error = outcome === 'success' ? {} : {
+      outcome: 'error',
+      ...(['payload_too_large', 'rate_limit', 'admission_unavailable'].includes(outcome)
+        ? { error_code: outcome }
+        : {}),
+      ...(outcome === 'rate_limit' ? { throttled: true } : {}),
+    };
+    Promise.resolve(onOperabilityEvent(Object.freeze({
       source: 'mcp',
+      event: 'tool',
       operation,
-      outcome,
+      tool: operation,
+      outcome: 'success',
       duration_ms: Math.max(0, Math.round(performance.now() - startedAt)),
+      ...error,
     }))).catch(() => {});
   } catch {
     // Observability must not change request behavior.
@@ -180,7 +190,7 @@ async function requireClient(client) {
 }
 
 export async function createLucyMemoryMcpServer({
-  client, name = 'lucy-memory-mcp', version = '0.1.3', admission, observer,
+  client, name = 'lucy-memory-mcp', version = '0.1.3', admission, onOperabilityEvent,
 } = {}) {
   const memoryClient = await requireClient(client);
   const limits = validateAdmission(admission);
@@ -264,7 +274,9 @@ export async function createLucyMemoryMcpServer({
         }
       }
       if (localSlot) activeRequests -= 1;
-      if (metricOperation !== null) recordMetric(observer, metricOperation, outcome, startedAt);
+      if (metricOperation !== null) {
+        recordOperabilityEvent(onOperabilityEvent, metricOperation, outcome, startedAt);
+      }
     }
   });
 

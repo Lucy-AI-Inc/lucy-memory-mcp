@@ -65,6 +65,11 @@ MCP admission rejections use `rate_limit`, status 429, and may include `retry_af
 fails closed and Agent Memory was not called. Check the shared authority and its low-cardinality
 `source=mcp` metrics. Do not add a local-map fallback or unbounded retry loop.
 
+The optional `onOperabilityEvent` callback receives privacy-safe `event: "tool"` records. Admission
+failures use `outcome: "error"` and only the bounded `error_code` values `payload_too_large`,
+`rate_limit`, or `admission_unavailable`; `throttled: true` appears only for `rate_limit`. Callback
+exceptions and rejected promises never change tool results.
+
 For beta certification, configure candidate ceilings in the deployment-owned admission module, exercise
 multiple MCP instances/tasks against the same authority, and record MCP-tagged QPS, latency, errors, and
 rejections. Choose production ceilings from those measurements and approved spend policy; this package

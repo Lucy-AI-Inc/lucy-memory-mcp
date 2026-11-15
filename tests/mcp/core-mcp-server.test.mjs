@@ -107,6 +107,7 @@ async function inMemoryHarness(t, agentTransport, { permissions = ['memory:read'
 
 test('canonical body and task concurrency limits reject before Agent Memory', async (t) => {
   let upstreamCalls = 0;
+  const events = [];
   let unblock;
   const blocked = new Promise((resolve) => { unblock = resolve; });
   const client = await harnessForAgentClient(t, new AgentMemoryClient({
@@ -118,7 +119,10 @@ test('canonical body and task concurrency limits reject before Agent Memory', as
       await blocked;
       return response(recallResponse());
     },
-  }), { admission: { maxBodyBytes: 200, maxConcurrentPerTask: 1 } });
+  }), {
+    admission: { maxBodyBytes: 200, maxConcurrentPerTask: 1 },
+    onOperabilityEvent: (event) => events.push(event),
+  });
 
   const first = client.callTool({ name: 'memory_recall', arguments: recallRequest() });
   await new Promise((resolve) => setImmediate(resolve));
@@ -133,12 +137,23 @@ test('canonical body and task concurrency limits reject before Agent Memory', as
   assert.deepEqual(errorPayload(bodyRejected), {
     code: 'payload_too_large', message: 'The memory request is too large.', retryable: false, status: 413,
   });
+  const bodyEvent = events.find(({ error_code }) => error_code === 'payload_too_large');
+  assert.deepEqual({ ...bodyEvent, duration_ms: 0 }, {
+    source: 'mcp',
+    event: 'tool',
+    operation: 'memory_recall',
+    tool: 'memory_recall',
+    outcome: 'error',
+    error_code: 'payload_too_large',
+    duration_ms: 0,
+  });
+  assert.equal('throttled' in bodyEvent, false);
   assert.equal(upstreamCalls, 1);
   unblock();
   await first;
 });
 
-test('shared authority enforces a cap across server instances and emits MCP metrics', async (t) => {
+test('shared authority enforces a cap across server instances and emits MCP operability events', async (t) => {
   let inFlight = 0;
   let upstreamCalls = 0;
   let unblock;
@@ -152,7 +167,7 @@ test('shared authority enforces a cap across server instances and emits MCP metr
     },
     async release() { inFlight -= 1; },
   };
-  const metrics = [];
+  const events = [];
   const makeAgentClient = () => new AgentMemoryClient({
     token: 'test-token',
     permissions: ['memory:read'],
@@ -166,11 +181,11 @@ test('shared authority enforces a cap across server instances and emits MCP metr
   const context = { subject: 'subject-1', workspace: 'workspace-1', client: 'client-1', task: 'task-1' };
   const firstClient = await harnessForAgentClient(t, makeAgentClient(), {
     admission: { authority, context },
-    observer: (event) => metrics.push(event),
+    onOperabilityEvent: (event) => events.push(event),
   });
   const secondClient = await harnessForAgentClient(t, makeAgentClient(), {
     admission: { authority, context: { ...context, task: 'task-2' } },
-    observer: (event) => metrics.push(event),
+    onOperabilityEvent: (event) => events.push(event),
   });
 
   const first = firstClient.callTool({ name: 'memory_recall', arguments: recallRequest() });
@@ -186,14 +201,22 @@ test('shared authority enforces a cap across server instances and emits MCP metr
   assert.equal(upstreamCalls, 1);
   unblock();
   await first;
-  assert.equal(metrics.some(({ source, operation, outcome }) => (
-    source === 'mcp' && operation === 'memory_recall' && outcome === 'rate_limit'
-  )), true);
-  assert.equal(metrics.every((event) => Object.keys(event).sort().join(',') === 'duration_ms,operation,outcome,source'), true);
+  const rateLimitEvent = events.find(({ error_code }) => error_code === 'rate_limit');
+  assert.deepEqual({ ...rateLimitEvent, duration_ms: 0 }, {
+    source: 'mcp',
+    event: 'tool',
+    operation: 'memory_recall',
+    tool: 'memory_recall',
+    outcome: 'error',
+    error_code: 'rate_limit',
+    throttled: true,
+    duration_ms: 0,
+  });
 });
 
 test('shared authority failures are fail-closed without upstream calls', async (t) => {
   let upstreamCalls = 0;
+  const events = [];
   const client = await harnessForAgentClient(t, new AgentMemoryClient({
     token: 'test-token',
     permissions: ['memory:read'],
@@ -207,6 +230,7 @@ test('shared authority failures are fail-closed without upstream calls', async (
       context: { subject: 's', workspace: 'w', client: 'c', task: 't' },
       authority: { async acquire() { throw new Error('private'); }, async release() {} },
     },
+    onOperabilityEvent: (event) => events.push(event),
   });
   const rejected = await client.callTool({ name: 'memory_recall', arguments: recallRequest() });
   assert.deepEqual(errorPayload(rejected), {
@@ -215,10 +239,21 @@ test('shared authority failures are fail-closed without upstream calls', async (
     retryable: false,
     status: 503,
   });
+  const unavailableEvent = events.find(({ error_code }) => error_code === 'admission_unavailable');
+  assert.deepEqual({ ...unavailableEvent, duration_ms: 0 }, {
+    source: 'mcp',
+    event: 'tool',
+    operation: 'memory_recall',
+    tool: 'memory_recall',
+    outcome: 'error',
+    error_code: 'admission_unavailable',
+    duration_ms: 0,
+  });
+  assert.equal('throttled' in unavailableEvent, false);
   assert.equal(upstreamCalls, 0);
 });
 
-test('hostile admission decisions and async observer failures stay contained', async (t) => {
+test('hostile admission decisions and operability callback failures stay contained', async (t) => {
   let upstreamCalls = 0;
   const client = await harnessForAgentClient(t, new AgentMemoryClient({
     token: 'test-token',
@@ -240,7 +275,7 @@ test('hostile admission decisions and async observer failures stay contained', a
         async release() {},
       },
     },
-    observer: async () => { throw new Error('private'); },
+    onOperabilityEvent: async () => { throw new Error('private'); },
   });
   const rejected = await client.callTool({ name: 'memory_recall', arguments: recallRequest() });
   assert.deepEqual(errorPayload(rejected), {
@@ -251,6 +286,18 @@ test('hostile admission decisions and async observer failures stay contained', a
   });
   await new Promise((resolve) => setImmediate(resolve));
   assert.equal(upstreamCalls, 0);
+
+  const successful = await harnessForAgentClient(t, new AgentMemoryClient({
+    token: 'test-token',
+    permissions: ['memory:read'],
+    timeoutMs: 1000,
+    transport: async () => response(recallResponse()),
+  }), {
+    onOperabilityEvent() { throw new Error('private'); },
+  });
+  assert.equal((await successful.callTool({
+    name: 'memory_recall', arguments: recallRequest(),
+  })).isError, undefined);
 });
 
 test('core MCP server exports exactly the three frozen Lucy memory tools', async () => {

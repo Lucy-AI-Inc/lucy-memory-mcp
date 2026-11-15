@@ -141,7 +141,9 @@ An admission module exports `createAdmission` (or a default factory) returning:
     context: { subject, workspace, client, task },
     ceilings
   },
-  observer({ source, operation, outcome, duration_ms }) {}
+  onOperabilityEvent({
+    source, event, operation, tool, outcome, duration_ms, error_code, throttled
+  }) {}
 }
 ```
 
@@ -153,9 +155,12 @@ return an opaque lease, which is released after the call. Rejections return stab
 with optional `retry_after` milliseconds. The MCP layer never retries an admission rejection or Agent Memory
 call; only the existing idempotent proposal transport retry discipline applies.
 
-The observer fields are intentionally low-cardinality (`source: "mcp"`, operation, outcome, duration) so
-dashboards can separate MCP Agent Memory QPS/latency/errors from chat without recording memory content,
-keys, subjects, workspaces, request IDs, or exception text.
+Operability events are intentionally low-cardinality: `source: "mcp"`, `event: "tool"`, operation/tool
+identity, `outcome: "success" | "error"`, and duration. Admission failures add only the allowlisted
+`error_code` values `payload_too_large`, `rate_limit`, or `admission_unavailable`; only `rate_limit` adds
+`throttled: true`. This lets dashboards separate MCP Agent Memory QPS/latency/errors and 429s from chat
+without recording memory content, keys, subjects, workspaces, request IDs, or exception text. Observer
+exceptions and rejected promises are isolated from request behavior.
 
 `maxBodyBytes` protects canonical tool arguments. Hosted ingress must additionally enforce a raw request-body
 limit before parsing. WAF/edge rules, shared authority deployment, and hosted wiring remain blocked on

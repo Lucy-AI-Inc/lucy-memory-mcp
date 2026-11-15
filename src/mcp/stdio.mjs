@@ -11,11 +11,11 @@ export function modulePathFromUrl(url) {
 }
 
 export async function startLucyMemoryMcpStdio({
-  client, admission, observer, stdin = process.stdin, stdout = process.stdout, maxBufferSize = 1_048_576,
+  client, admission, onOperabilityEvent, stdin = process.stdin, stdout = process.stdout, maxBufferSize = 1_048_576,
 } = {}) {
   const transport = new StdioServerTransport(stdin, stdout, { maxBufferSize });
   const handle = serveStdio(
-    () => createLucyMemoryMcpServer({ client, admission, observer }),
+    () => createLucyMemoryMcpServer({ client, admission, onOperabilityEvent }),
     { transport, legacy: 'serve' },
   );
   return Object.freeze({ close: async () => handle.close() });

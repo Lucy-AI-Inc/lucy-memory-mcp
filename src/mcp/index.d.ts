@@ -22,7 +22,7 @@ export interface LucyMemoryMcpServerOptions {
   name?: string;
   version?: string;
   admission?: LucyMemoryAdmissionOptions;
-  observer?: (event: LucyMemoryMcpMetric) => void | Promise<void>;
+  onOperabilityEvent?: (event: LucyMemoryMcpOperabilityEvent) => void | Promise<void>;
 }
 export interface LucyMemoryAdmissionContext {
   readonly subject: string;
@@ -50,11 +50,15 @@ export interface LucyMemoryAdmissionOptions {
   maxConcurrentPerTask?: number;
   ceilings?: Readonly<Record<string, number>>;
 }
-export interface LucyMemoryMcpMetric {
+export interface LucyMemoryMcpOperabilityEvent {
   readonly source: 'mcp';
+  readonly event: 'tool';
   readonly operation: LucyMemoryToolName;
-  readonly outcome: string;
+  readonly tool: LucyMemoryToolName;
+  readonly outcome: 'success' | 'error';
   readonly duration_ms: number;
+  readonly error_code?: 'payload_too_large' | 'rate_limit' | 'admission_unavailable';
+  readonly throttled?: true;
 }
 export const LUCY_MEMORY_TOOL_NAMES: readonly LucyMemoryToolName[];
 export const LUCY_MEMORY_TOOLS: readonly LucyMemoryToolDefinition[];
