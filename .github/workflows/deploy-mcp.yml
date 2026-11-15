@@ -1,0 +1,194 @@
+name: Deploy isolated MCP service
+
+'on':
+  workflow_dispatch:
+    inputs:
+      environment:
+        description: Protected GitHub environment containing the approved AWS configuration
+        required: true
+        type: environment
+      desired_count:
+        description: ECS desired count; use 0 to scale this service down independently
+        required: true
+        default: '1'
+        type: string
+
+permissions: {}
+
+concurrency:
+  group: deploy-mcp-${{ inputs.environment }}
+  cancel-in-progress: false
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    environment:
+      name: ${{ inputs.environment }}
+    permissions:
+      contents: read
+      id-token: write
+    steps:
+      - name: Check out immutable source
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+        with:
+          ref: ${{ github.sha }}
+          persist-credentials: false
+
+      - name: Validate protected environment configuration
+        env:
+          AWS_REGION: ${{ vars.AWS_REGION }}
+          AWS_ACCOUNT_ID: ${{ vars.AWS_ACCOUNT_ID }}
+          AWS_ROLE_ARN: ${{ vars.AWS_ROLE_ARN }}
+          ECR_REPOSITORY: ${{ vars.ECR_REPOSITORY }}
+          ECS_CLUSTER_ARN: ${{ vars.ECS_CLUSTER_ARN }}
+          VPC_ID: ${{ vars.VPC_ID }}
+          PUBLIC_SUBNET_IDS: ${{ vars.PUBLIC_SUBNET_IDS }}
+          PRIVATE_SUBNET_IDS: ${{ vars.PRIVATE_SUBNET_IDS }}
+          CERTIFICATE_ARN: ${{ vars.CERTIFICATE_ARN }}
+          MCP_HOSTNAME: ${{ vars.MCP_HOSTNAME }}
+          ALB_INGRESS_PREFIX_LIST_ID: ${{ vars.ALB_INGRESS_PREFIX_LIST_ID }}
+          APPROVED_EGRESS_PREFIX_LIST_ID: ${{ vars.APPROVED_EGRESS_PREFIX_LIST_ID }}
+          AWS_ENDPOINT_SECURITY_GROUP_ID: ${{ vars.AWS_ENDPOINT_SECURITY_GROUP_ID }}
+          EGRESS_FIREWALL_ARN: ${{ vars.EGRESS_FIREWALL_ARN }}
+          EGRESS_FIREWALL_ENDPOINT_IDS: ${{ vars.EGRESS_FIREWALL_ENDPOINT_IDS }}
+          UPSTREAM_TOKEN_SECRET_ARN: ${{ vars.UPSTREAM_TOKEN_SECRET_ARN }}
+          INBOUND_BEARER_SECRET_ARN: ${{ vars.INBOUND_BEARER_SECRET_ARN }}
+          MCP_HTTP_AUTH_MODE: ${{ vars.MCP_HTTP_AUTH_MODE }}
+          MCP_NODE_ENV: ${{ vars.MCP_NODE_ENV }}
+          AGENT_MEMORY_BASE_URL: ${{ vars.AGENT_MEMORY_BASE_URL }}
+          MCP_ALLOWED_ORIGINS: ${{ vars.MCP_ALLOWED_ORIGINS }}
+          MCP_MAX_REQUEST_BODY_BYTES: ${{ vars.MCP_MAX_REQUEST_BODY_BYTES }}
+          MCP_MAX_CONCURRENT_PER_TASK: ${{ vars.MCP_MAX_CONCURRENT_PER_TASK }}
+          MCP_WAF_REQUESTS_PER_FIVE_MINUTES: ${{ vars.MCP_WAF_REQUESTS_PER_FIVE_MINUTES }}
+          MCP_ADMISSION_MODULE: ${{ vars.MCP_ADMISSION_MODULE }}
+        run: |
+          set -euo pipefail
+          for name in AWS_ACCOUNT_ID AWS_REGION AWS_ROLE_ARN ECR_REPOSITORY ECS_CLUSTER_ARN VPC_ID PUBLIC_SUBNET_IDS PRIVATE_SUBNET_IDS CERTIFICATE_ARN MCP_HOSTNAME ALB_INGRESS_PREFIX_LIST_ID APPROVED_EGRESS_PREFIX_LIST_ID AWS_ENDPOINT_SECURITY_GROUP_ID EGRESS_FIREWALL_ARN EGRESS_FIREWALL_ENDPOINT_IDS UPSTREAM_TOKEN_SECRET_ARN MCP_HTTP_AUTH_MODE MCP_NODE_ENV AGENT_MEMORY_BASE_URL MCP_ALLOWED_ORIGINS MCP_MAX_REQUEST_BODY_BYTES MCP_MAX_CONCURRENT_PER_TASK MCP_WAF_REQUESTS_PER_FIVE_MINUTES MCP_ADMISSION_MODULE; do
+            test -n "${!name:-}" || { echo "::error::$name is not configured"; exit 1; }
+          done
+          [[ "$UPSTREAM_TOKEN_SECRET_ARN" == *":secret:lucy/mcp/"* ]]
+          [[ "$AGENT_MEMORY_BASE_URL" == https://* ]]
+          [[ "${{ inputs.desired_count }}" =~ ^([0-9]|10)$ ]]
+          [[ "$MCP_MAX_REQUEST_BODY_BYTES" =~ ^[1-9][0-9]{0,3}$ ]] && (( MCP_MAX_REQUEST_BODY_BYTES <= 8192 ))
+          [[ "$MCP_MAX_CONCURRENT_PER_TASK" =~ ^[1-9][0-9]*$ ]]
+          [[ "$MCP_WAF_REQUESTS_PER_FIVE_MINUTES" =~ ^[1-9][0-9]*$ ]] && (( MCP_WAF_REQUESTS_PER_FIVE_MINUTES >= 10 ))
+          [[ "$MCP_ADMISSION_MODULE" == /*.mjs ]]
+          if [[ "$MCP_NODE_ENV" == production ]]; then
+            test "$MCP_HTTP_AUTH_MODE" = none
+            test -z "$INBOUND_BEARER_SECRET_ARN"
+          else
+            test "$MCP_NODE_ENV" = staging
+            test "$MCP_HTTP_AUTH_MODE" = staging-static-bearer
+            [[ "$INBOUND_BEARER_SECRET_ARN" == *":secret:lucy/mcp/"* ]]
+          fi
+
+      - name: Configure AWS credentials with GitHub OIDC
+        uses: aws-actions/configure-aws-credentials@e3dd6a429d7300a6a4c196c26e071d42e0343502
+        with:
+          role-to-assume: ${{ vars.AWS_ROLE_ARN }}
+          aws-region: ${{ vars.AWS_REGION }}
+
+      - name: Validate private subnet egress path
+        env:
+          PRIVATE_SUBNET_IDS: ${{ vars.PRIVATE_SUBNET_IDS }}
+          EGRESS_FIREWALL_ARN: ${{ vars.EGRESS_FIREWALL_ARN }}
+          EGRESS_FIREWALL_ENDPOINT_IDS: ${{ vars.EGRESS_FIREWALL_ENDPOINT_IDS }}
+        run: |
+          set -euo pipefail
+          aws network-firewall describe-firewall --firewall-arn "$EGRESS_FIREWALL_ARN" --query 'FirewallStatus.Status' --output text | grep -qx READY
+          endpoint_ids=$(jq -R 'split(\",\") | map(select(test(\"^vpce-[a-f0-9]+$\")))' <<<"$EGRESS_FIREWALL_ENDPOINT_IDS")
+          test "$(jq length <<<"$endpoint_ids")" -gt 0
+          for subnet in ${PRIVATE_SUBNET_IDS//,/ }; do
+            routes=$(aws ec2 describe-route-tables --filters "Name=association.subnet-id,Values=$subnet" --query 'RouteTables[].Routes[]' --output json)
+            jq -e 'all(.[]; (.NatGatewayId // "") == "" and (.GatewayId // "") != "igw-")' <<<"$routes" >/dev/null
+            jq -e --argjson endpoints "$endpoint_ids" \
+              'any(.[]; .DestinationCidrBlock == "0.0.0.0/0" and ([.VpcEndpointId] | inside($endpoints)))' \
+              <<<"$routes" >/dev/null
+          done
+
+      - name: Build and push the source-SHA image
+        id: image
+        env:
+          AWS_ACCOUNT_ID: ${{ vars.AWS_ACCOUNT_ID }}
+          AWS_REGION: ${{ vars.AWS_REGION }}
+          ECR_REPOSITORY: ${{ vars.ECR_REPOSITORY }}
+        run: |
+          set -euo pipefail
+          registry="${AWS_ACCOUNT_ID}.dkr.ecr.${AWS_REGION}.amazonaws.com"
+          image="${registry}/${ECR_REPOSITORY}:${GITHUB_SHA}"
+          aws ecr get-login-password | docker login --username AWS --password-stdin "$registry"
+          docker build --pull=false --tag "$image" .
+          docker push "$image"
+          digest=$(aws ecr describe-images --repository-name "$ECR_REPOSITORY" --image-ids imageTag="$GITHUB_SHA" --query 'imageDetails[0].imageDigest' --output text)
+          [[ "$digest" =~ ^sha256:[a-f0-9]{64}$ ]]
+          echo "uri=${registry}/${ECR_REPOSITORY}@${digest}" >> "$GITHUB_OUTPUT"
+
+      - name: Capture rollback revision
+        id: previous
+        env:
+          ECS_CLUSTER_ARN: ${{ vars.ECS_CLUSTER_ARN }}
+          SERVICE_NAME: lucy-memory-mcp-${{ inputs.environment }}
+        run: |
+          previous=$(aws ecs describe-services --cluster "$ECS_CLUSTER_ARN" --services "$SERVICE_NAME" --query 'services[0].taskDefinition' --output text 2>/dev/null || true)
+          [[ "$previous" == arn:* ]] || previous=""
+          echo "task_definition=$previous" >> "$GITHUB_OUTPUT"
+
+      - name: Deploy dedicated stack
+        env:
+          IMAGE_URI: ${{ steps.image.outputs.uri }}
+        run: |
+          set -euo pipefail
+          repository_arn=$(aws ecr describe-repositories --repository-names "${{ vars.ECR_REPOSITORY }}" --query 'repositories[0].repositoryArn' --output text)
+          aws cloudformation deploy \
+            --stack-name "lucy-mcp-${{ inputs.environment }}" \
+            --template-file infra/ecs-fargate.yml \
+            --capabilities CAPABILITY_IAM \
+            --no-fail-on-empty-changeset \
+            --parameter-overrides \
+              EnvironmentName="${{ inputs.environment }}" ImageUri="$IMAGE_URI" VpcId="${{ vars.VPC_ID }}" \
+              PublicSubnetIds="${{ vars.PUBLIC_SUBNET_IDS }}" PrivateSubnetIds="${{ vars.PRIVATE_SUBNET_IDS }}" \
+              ClusterArn="${{ vars.ECS_CLUSTER_ARN }}" CertificateArn="${{ vars.CERTIFICATE_ARN }}" \
+              Hostname="${{ vars.MCP_HOSTNAME }}" \
+              AlbIngressPrefixListId="${{ vars.ALB_INGRESS_PREFIX_LIST_ID }}" \
+              ApprovedEgressPrefixListId="${{ vars.APPROVED_EGRESS_PREFIX_LIST_ID }}" \
+              AwsEndpointSecurityGroupId="${{ vars.AWS_ENDPOINT_SECURITY_GROUP_ID }}" \
+              EgressFirewallArn="${{ vars.EGRESS_FIREWALL_ARN }}" ExecutionRepositoryArn="$repository_arn" \
+              UpstreamTokenSecretArn="${{ vars.UPSTREAM_TOKEN_SECRET_ARN }}" \
+              InboundBearerSecretArn="${{ vars.INBOUND_BEARER_SECRET_ARN }}" \
+              HttpAuthMode="${{ vars.MCP_HTTP_AUTH_MODE }}" NodeEnvironment="${{ vars.MCP_NODE_ENV }}" \
+              AgentMemoryBaseUrl="${{ vars.AGENT_MEMORY_BASE_URL }}" \
+              AllowedOrigins="${{ vars.MCP_ALLOWED_ORIGINS }}" \
+              MaxRequestBodyBytes="${{ vars.MCP_MAX_REQUEST_BODY_BYTES }}" \
+              MaxConcurrentPerTask="${{ vars.MCP_MAX_CONCURRENT_PER_TASK }}" \
+              WafRequestsPerFiveMinutes="${{ vars.MCP_WAF_REQUESTS_PER_FIVE_MINUTES }}" \
+              AdmissionModule="${{ vars.MCP_ADMISSION_MODULE }}" DesiredCount="${{ inputs.desired_count }}"
+
+      - name: Verify stable SHA-pinned rollout
+        if: inputs.desired_count != '0'
+        env:
+          ECS_CLUSTER_ARN: ${{ vars.ECS_CLUSTER_ARN }}
+          EXPECTED_IMAGE: ${{ steps.image.outputs.uri }}
+          SERVICE_NAME: lucy-memory-mcp-${{ inputs.environment }}
+        run: |
+          set -euo pipefail
+          aws ecs wait services-stable --cluster "$ECS_CLUSTER_ARN" --services "$SERVICE_NAME"
+          task_definition=$(aws ecs describe-services --cluster "$ECS_CLUSTER_ARN" --services "$SERVICE_NAME" --query 'services[0].taskDefinition' --output text)
+          deployed_image=$(aws ecs describe-task-definition --task-definition "$task_definition" --query 'taskDefinition.containerDefinitions[?name==`lucy-mcp`].image | [0]' --output text)
+          test "$deployed_image" = "$EXPECTED_IMAGE"
+          task_arns=$(aws ecs list-tasks --cluster "$ECS_CLUSTER_ARN" --service-name "$SERVICE_NAME" --desired-status RUNNING --query 'taskArns' --output text)
+          test -n "$task_arns"
+          aws ecs describe-tasks --cluster "$ECS_CLUSTER_ARN" --tasks $task_arns --query 'tasks[].taskDefinitionArn' --output text | tr '\t' '\n' | grep -vxF "$task_definition" && exit 1 || true
+          curl --fail --silent --show-error --retry 6 --retry-all-errors "https://${{ vars.MCP_HOSTNAME }}/healthz"
+
+      - name: Record rollback command
+        if: always() && steps.previous.outputs.task_definition != ''
+        env:
+          PREVIOUS_TASK_DEFINITION: ${{ steps.previous.outputs.task_definition }}
+        run: |
+          {
+            echo '### Rollback'
+            echo '```sh'
+            echo "aws ecs update-service --cluster '${{ vars.ECS_CLUSTER_ARN }}' --service 'lucy-memory-mcp-${{ inputs.environment }}' --task-definition '$PREVIOUS_TASK_DEFINITION'"
+            echo '```'
+          } >> "$GITHUB_STEP_SUMMARY"

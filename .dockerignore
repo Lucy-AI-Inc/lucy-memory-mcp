@@ -1,0 +1,10 @@
+.git
+.github
+.lucy-governance
+coverage
+docs
+node_modules
+tests
+*.log
+*.tgz
+.env*

@@ -1,10 +1,10 @@
 # Architecture and trust boundaries
 
-Lucy Memory MCP is a stateless stdio server in front of Lucy's Agent Memory HTTP API.
+Lucy Memory MCP is a stateless MCP server in front of Lucy's Agent Memory HTTP API.
 
 ```text
 MCP host
-  -> Lucy Memory MCP over stdio
+  -> Lucy Memory MCP over stdio or hosted Streamable HTTP
   -> AgentMemoryClient
   -> HTTPS transport
   -> Lucy Agent Memory HTTP v1
@@ -24,6 +24,11 @@ The server:
 - keeps stdout reserved for MCP protocol frames
 
 The stdio runtime supports MCP `2026-07-28` and compatibility with `2025-11-25`. Both protocol versions expose the same three tools.
+
+The hosted runtime uses `src/mcp/http.mjs`, listens on `HOST` and `PORT`, serves
+MCP at `/mcp`, and exposes unauthenticated liveness at `/healthz`. Its ECS
+deployment is a dedicated service and task definition; it is not a chat worker
+mode and shares neither worker IAM nor worker secrets.
 
 ### Client
 
