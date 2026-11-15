@@ -12,6 +12,8 @@ RUN npm ci --omit=dev --ignore-scripts && npm cache clean --force
 COPY --chown=node:node src ./src
 COPY --chown=node:node schemas ./schemas
 COPY --chown=node:node contracts ./contracts
+COPY --chown=node:node scripts/lib ./scripts/lib
+COPY --chown=node:node .github/skills/lucy-memory-first/SKILL.md ./.github/skills/lucy-memory-first/SKILL.md
 RUN test -f src/mcp/http.mjs
 
 USER node

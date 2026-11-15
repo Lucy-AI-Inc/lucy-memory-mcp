@@ -54,6 +54,10 @@
       "types": "./src/mcp/stdio.d.ts",
       "import": "./src/mcp/stdio.mjs"
     },
+    "./mcp/http": {
+      "types": "./src/mcp/http.d.ts",
+      "import": "./src/mcp/http.mjs"
+    },
     "./provider": {
       "types": "./src/provider/index.d.ts",
       "import": "./src/provider/index.mjs"
@@ -73,6 +77,7 @@
     "hashes": "node scripts/generate-hashes.mjs --write",
     "test": "node --test",
     "test:mcp": "node --test tests/mcp/core-mcp-server.test.mjs",
+    "test:mcp:http": "node --test tests/mcp/http-server.test.mjs",
     "test:e2e": "node --test tests/e2e/wave4-isolated-e2e.test.mjs",
     "test:adversarial": "node --test tests/adversarial/hosted-mcp-adversarial.test.mjs",
     "test:package": "node --test tests/package/package-contents.test.mjs",
