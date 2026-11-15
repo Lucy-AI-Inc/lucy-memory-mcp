@@ -1,4 +1,10 @@
-import { AgentMemoryClient, createLucyHttpTransport, type AgentMemoryTransport, type CanonicalRecallResponse } from '@trylucy/agent-memory';
+import {
+  AgentMemoryClient,
+  createHostedAgentMemoryClient,
+  createLucyHttpTransport,
+  type AgentMemoryTransport,
+  type CanonicalRecallResponse,
+} from '@trylucy/agent-memory';
 import type { Server } from '@modelcontextprotocol/server';
 import { createLucyMemoryMcpServer, LUCY_MEMORY_TOOL_NAMES, type LucyMemoryMcpServerOptions, type LucyMemoryToolName } from '@trylucy/agent-memory/mcp';
 import { startLucyMemoryMcpStdio, type LucyMemoryStdioRuntime } from '@trylucy/agent-memory/mcp/stdio';
@@ -18,6 +24,17 @@ import {
 
 const transport: AgentMemoryTransport = createLucyHttpTransport({ baseUrl: 'https://www.trylucy.ai' });
 const client = new AgentMemoryClient({ transport, token: 'compile-only-token', permissions: ['memory:read', 'memory:propose'] });
+const hostedClient = createHostedAgentMemoryClient({
+  authContext: {
+    clientAccessToken: 'validated-client-token',
+    subject: 'user_123',
+    workspaceId: 'workspace_123',
+    scopes: ['openid', 'memory:read', 'memory:propose'],
+  },
+  exchangeUrl: 'https://exchange.example.test/v1/agent-memory',
+  serviceToken: 'server-service-token',
+  transport,
+});
 const canonical: Promise<CanonicalRecallResponse> = client.recallCanonical(JSON.stringify({ query: 'name', scope: { kind: 'user' } }));
 const options: LucyMemoryMcpServerOptions = { client };
 const server: Promise<Server> = createLucyMemoryMcpServer(options);
@@ -85,4 +102,4 @@ void generatedMcpConfig.x_lucy_memory_artifact.receipt_path;
 void uninstallHermesLucyConfig('/tmp/lucy-profile/config.yaml', { profilePath: hermesOptions.profilePath });
 void resetHermesLucyBackup('/tmp/lucy-profile/config.yaml', { profilePath: hermesOptions.profilePath });
 void resetHermesLucyArtifacts('/tmp/lucy-profile/config.yaml', { profilePath: hermesOptions.profilePath });
-void server; void tool; void runtime; void metadata;
+void server; void tool; void runtime; void metadata; void hostedClient;

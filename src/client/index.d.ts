@@ -176,6 +176,26 @@ export interface AgentMemoryClientOptions {
   timeoutMs?: number;
 }
 
+export interface ValidatedHostedAuthContext {
+  /** Raw client bearer retained only for the mandatory no-passthrough equality check. */
+  clientAccessToken: string;
+  subject: string;
+  workspaceId: string;
+  /** OAuth scopes validated by the hosted MCP resource server. Non-memory scopes are ignored. */
+  scopes: readonly string[];
+}
+
+export interface HostedAgentMemoryClientOptions {
+  authContext: ValidatedHostedAuthContext;
+  exchangeUrl: string;
+  /** Server-to-server credential for the exchange endpoint; it must not be the client bearer. */
+  serviceToken: string;
+  transport: AgentMemoryTransport;
+  fetchImpl?: typeof fetch;
+  timeoutMs?: number;
+  exchangeTimeoutMs?: number;
+}
+
 export type RecallRequestJson = string;
 export type ProposalRequestJson = string;
 export type ProposalStatusRequestJson = string;
@@ -189,6 +209,8 @@ export class AgentMemoryClient {
   propose(requestJson: ProposalRequestJson): Promise<ProposalStatus>;
   proposalStatus(requestJson: ProposalStatusRequestJson): Promise<ProposalStatus>;
 }
+
+export function createHostedAgentMemoryClient(options: HostedAgentMemoryClientOptions): Promise<AgentMemoryClient>;
 
 export interface AgentMemoryErrorOptions {
   code?: string;
