@@ -26,6 +26,21 @@ test('telemetry is allowlisted and excludes credentials and memory content', asy
   assert.equal(records[0].outcome, 'success');
 });
 
+test('observer failures cannot alter upstream results', async () => {
+  for (const onOperabilityEvent of [
+    () => { throw new Error('observer failed'); },
+    async () => { throw new Error('observer failed'); },
+  ]) {
+    const client = new AgentMemoryClient({
+      token: 'token',
+      permissions: ['memory:read'],
+      onOperabilityEvent,
+      transport: async () => ({ status: 200, body: recall, byteLength: Buffer.byteLength(JSON.stringify(recall)) }),
+    });
+    assert.deepEqual(await client.recall(JSON.stringify({ query: 'safe', scope: USER, limit: 1 })), recall);
+  }
+});
+
 test('auth, throttle, and upstream errors emit bounded metrics only', () => {
   const records = [];
   const emit = createOperabilityEmitter({ write: (record) => records.push(record) });

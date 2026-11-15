@@ -167,12 +167,14 @@ export class AgentMemoryClient {
   }
   #emit(operation, started, error, status) {
     if (this.#onOperabilityEvent === undefined) return;
-    this.#onOperabilityEvent({
-      event: 'upstream',
-      operation,
-      outcome: error ? 'error' : 'success',
-      duration_ms: performance.now() - started,
-      ...(error ? { error_code: error.code, status: error.status ?? undefined, throttled: error.code === 'rate_limit' } : { status }),
-    });
+    try {
+      Promise.resolve(this.#onOperabilityEvent({
+        event: 'upstream',
+        operation,
+        outcome: error ? 'error' : 'success',
+        duration_ms: performance.now() - started,
+        ...(error ? { error_code: error.code, status: error.status ?? undefined, throttled: error.code === 'rate_limit' } : { status }),
+      })).catch(() => {});
+    } catch {}
   }
 }
