@@ -126,6 +126,7 @@ The supported package entry points are:
 | `@trylucy/agent-memory` | Client, HTTP transport, validation helpers, public types, and normalized errors |
 | `@trylucy/agent-memory/mcp` | MCP server factory and tool definitions |
 | `@trylucy/agent-memory/mcp/stdio` | Stdio runtime helpers |
+| `@trylucy/agent-memory/mcp/resource-server` | Hosted OAuth resource-server validation and RFC 9728 metadata |
 | `@trylucy/agent-memory/provider` | Memory-first routing and provider helpers |
 | `@trylucy/agent-memory/hermes` | Hermes configuration integration |
 
@@ -152,6 +153,27 @@ const result = await client.recall(JSON.stringify({
 ```
 
 The low-level client accepts canonical JSON strings rather than caller-owned JavaScript objects. See the [SDK reference](docs/sdk.md) for all public types, errors, and entry points.
+
+### Hosted OAuth resource server
+
+Hosted transports can publish `server.metadata` at their RFC 9728 protected-resource metadata endpoint and call `server.authorize` before dispatching a Lucy MCP tool:
+
+```js
+import { createOAuthResourceServer } from '@trylucy/agent-memory/mcp/resource-server';
+
+const server = createOAuthResourceServer({
+  resource: 'https://mcp-beta.example.com/mcp',
+  issuer: 'https://auth.example.com/',
+  jwksUri: 'https://auth.example.com/.well-known/jwks.json',
+  introspectionEndpoint: 'https://auth.example.com/oauth/introspect',
+  introspectionAuthorization: `Basic ${process.env.INTROSPECTION_CREDENTIAL}`,
+  resolveMembership: async ({ issuer, subject }) => lookupMembership({ issuer, subject }),
+  createHostedClient: async (authContext) =>
+    createHostedAgentMemoryClient({ authContext, exchangeUrl, serviceToken, transport }),
+});
+```
+
+Omit `jwksUri` for opaque-token introspection. JWT validation requires introspection as a fail-closed revocation check. Membership must be resolved from the validated issuer and subject; bearer claims and MCP arguments are not workspace authority. `createHostedClient` receives only the validated subject, server-derived workspace, and granted memory scopes. Never pass the caller bearer or untrusted claims into it.
 
 ## Security and privacy
 

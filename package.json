@@ -46,6 +46,10 @@
       "types": "./src/mcp/index.d.ts",
       "import": "./src/mcp/server.mjs"
     },
+    "./mcp/resource-server": {
+      "types": "./src/mcp/resource-server.d.ts",
+      "import": "./src/mcp/resource-server.mjs"
+    },
     "./mcp/stdio": {
       "types": "./src/mcp/stdio.d.ts",
       "import": "./src/mcp/stdio.mjs"
