@@ -177,8 +177,6 @@ export interface AgentMemoryClientOptions {
 }
 
 export interface ValidatedHostedAuthContext {
-  /** Raw client bearer retained only for the mandatory no-passthrough equality check. */
-  clientAccessToken: string;
   subject: string;
   workspaceId: string;
   /** OAuth scopes validated by the hosted MCP resource server. Non-memory scopes are ignored. */
@@ -188,7 +186,7 @@ export interface ValidatedHostedAuthContext {
 export interface HostedAgentMemoryClientOptions {
   authContext: ValidatedHostedAuthContext;
   exchangeUrl: string;
-  /** Server-to-server credential for the exchange endpoint; it must not be the client bearer. */
+  /** Server-to-server credential for the exchange endpoint. */
   serviceToken: string;
   transport: AgentMemoryTransport;
   fetchImpl?: typeof fetch;

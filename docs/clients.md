@@ -119,7 +119,6 @@ After the hosted MCP resource server validates the client's OAuth bearer, call `
 ```js
 const client = await createHostedAgentMemoryClient({
   authContext: {
-    clientAccessToken: validatedAuth.accessToken,
     subject: validatedAuth.subject,
     workspaceId: validatedAuth.workspaceId,
     scopes: validatedAuth.scopes,
@@ -155,7 +154,7 @@ Only validated `memory:read` and `memory:propose` scopes are requested. The fron
 }
 ```
 
-The returned scopes may be a nonempty subset of the request and must not include any other permission. `expires_at` must be in the future and no more than 15 minutes from exchange. The exchanged token must differ from both the client bearer and the exchange service credential. Any network error, non-2xx response, malformed/expired/over-scoped response, non-short-lived credential, or equal token fails closed before `AgentMemoryClient` can call Agent Memory. The client bearer is used only for the local equality guard and is never sent to the exchange body or Agent Memory upstream.
+The returned scopes may be a nonempty subset of the request and must not include any other permission. `expires_at` must be in the future and no more than 15 minutes from exchange. The exchanged token must differ from the exchange service credential. Any network error, non-2xx response, malformed/expired/over-scoped response, non-short-lived credential, or equal token fails closed before `AgentMemoryClient` can call Agent Memory. The resource server must keep the client bearer inside its authentication boundary and prove there that it never reaches this bearer-free hosted-client seam or Agent Memory upstream.
 
 ## Disconnect
 

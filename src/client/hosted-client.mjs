@@ -67,7 +67,7 @@ async function readBoundedJson(response) {
   }
 }
 
-function validateExchangeResponse(value, requestedPermissions, clientAccessToken, serviceToken) {
+function validateExchangeResponse(value, requestedPermissions, serviceToken) {
   if (value === null || typeof value !== 'object' || Array.isArray(value)
       || value.token_type !== 'Bearer'
       || typeof value.expires_at !== 'string'
@@ -75,7 +75,7 @@ function validateExchangeResponse(value, requestedPermissions, clientAccessToken
     throw new MalformedResponseError('Credential exchange returned an invalid credential response.');
   }
   const accessToken = credential(value.access_token, 'Exchanged access_token');
-  if (accessToken === clientAccessToken || accessToken === serviceToken) {
+  if (accessToken === serviceToken) {
     throw new AuthenticationFailureError('Credential exchange did not issue a distinct Lucy credential.');
   }
   const expiresAt = Date.parse(value.expires_at);
@@ -112,11 +112,7 @@ export async function createHostedAgentMemoryClient({
     throw new ValidationFailureError('exchangeTimeoutMs must be an integer between 1 and 30000.');
   }
 
-  const clientAccessToken = credential(authContext.clientAccessToken, 'Validated client access token');
   const exchangeServiceToken = credential(serviceToken, 'Credential exchange service token');
-  if (exchangeServiceToken === clientAccessToken) {
-    throw new AuthenticationFailureError('Credential exchange service token must differ from the client access token.');
-  }
   const requestedPermissions = permissions(authContext.scopes);
   const request = {
     subject: identity(authContext.subject, 'Validated subject'),
@@ -147,7 +143,6 @@ export async function createHostedAgentMemoryClient({
   const exchanged = validateExchangeResponse(
     await readBoundedJson(response),
     requestedPermissions,
-    clientAccessToken,
     exchangeServiceToken,
   );
   return new AgentMemoryClient({

@@ -26,7 +26,6 @@ const transport: AgentMemoryTransport = createLucyHttpTransport({ baseUrl: 'http
 const client = new AgentMemoryClient({ transport, token: 'compile-only-token', permissions: ['memory:read', 'memory:propose'] });
 const hostedClient = createHostedAgentMemoryClient({
   authContext: {
-    clientAccessToken: 'validated-client-token',
     subject: 'user_123',
     workspaceId: 'workspace_123',
     scopes: ['openid', 'memory:read', 'memory:propose'],

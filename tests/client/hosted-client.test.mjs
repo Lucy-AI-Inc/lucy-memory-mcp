@@ -13,7 +13,6 @@ const CLIENT_TOKEN = 'client-oauth-token';
 const SERVICE_TOKEN = 'exchange-service-token';
 const EXCHANGED_TOKEN = 'short-lived-lucy-token';
 const AUTH_CONTEXT = {
-  clientAccessToken: CLIENT_TOKEN,
   subject: 'user_123',
   workspaceId: 'workspace_123',
   scopes: ['openid', 'memory:read', 'memory:propose', 'profile'],
@@ -129,7 +128,7 @@ test('hosted client fails closed when exchange is rejected', async () => {
 
 test('hosted client rejects passthrough, expired, malformed, and over-scoped exchange responses', async () => {
   const cases = [
-    [exchangeResponse({ access_token: CLIENT_TOKEN }), AuthenticationFailureError],
+    [exchangeResponse({ access_token: SERVICE_TOKEN }), AuthenticationFailureError],
     [exchangeResponse({ expires_at: '2020-01-01T00:00:00.000Z' }), AuthenticationFailureError],
     [exchangeResponse({ expires_at: new Date(Date.now() + 16 * 60_000).toISOString() }), AuthenticationFailureError],
     [exchangeResponse({ token_type: 'DPoP' }), MalformedResponseError],
@@ -148,14 +147,7 @@ test('hosted client rejects passthrough, expired, malformed, and over-scoped exc
   }
 });
 
-test('hosted client refuses to use the client bearer as exchange service authentication', async () => {
-  let exchangeCalls = 0;
-  await assert.rejects(createHostedAgentMemoryClient({
-    authContext: AUTH_CONTEXT,
-    exchangeUrl: 'https://frontend.example.test/exchange',
-    serviceToken: CLIENT_TOKEN,
-    transport: async () => {},
-    fetchImpl: async () => { exchangeCalls += 1; },
-  }), AuthenticationFailureError);
-  assert.equal(exchangeCalls, 0);
+test('hosted auth context is bearer-free', () => {
+  assert.deepEqual(Object.keys(AUTH_CONTEXT).sort(), ['scopes', 'subject', 'workspaceId']);
+  assert.equal(JSON.stringify(AUTH_CONTEXT).includes(CLIENT_TOKEN), false);
 });
