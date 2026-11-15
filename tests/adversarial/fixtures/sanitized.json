@@ -1,0 +1,27 @@
+{
+  "schema_version": "1",
+  "target": {
+    "audience": "https://memory.staging.invalid/mcp",
+    "disposable": true,
+    "environment": "staging"
+  },
+  "workspaces": [
+    {
+      "id": "workspace_disposable_alpha",
+      "label": "sanitized-alpha"
+    },
+    {
+      "id": "workspace_disposable_beta",
+      "label": "sanitized-beta"
+    }
+  ],
+  "memory": {
+    "key": "adversarial.isolation.marker",
+    "kind": "fact",
+    "content": "sanitized isolation marker",
+    "justification": "LUC-1077 disposable-workspace adversarial test"
+  },
+  "policy": {
+    "auto_memory": false
+  }
+}
