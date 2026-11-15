@@ -83,8 +83,9 @@ export class AgentMemoryClient {
   #timeoutMs;
   #token;
   #transport;
+  #onOperabilityEvent;
 
-  constructor({ transport, token, permissions: configuredPermissions, timeoutMs = 10_000 } = {}) {
+  constructor({ transport, token, permissions: configuredPermissions, timeoutMs = 10_000, onOperabilityEvent } = {}) {
     if (typeof transport !== 'function') throw new ValidationFailureError('transport must be a function.');
     if (typeof token !== 'string' || token.length === 0 || /[\r\n\0]/.test(token)) throw new AuthenticationFailureError('token must be a non-empty string without line breaks or NUL bytes.');
     if (!Number.isInteger(timeoutMs) || timeoutMs < 1 || timeoutMs > 300_000) throw new ValidationFailureError('timeoutMs must be an integer between 1 and 300000.');
@@ -92,6 +93,8 @@ export class AgentMemoryClient {
     this.#token = token;
     this.#permissions = permissions(configuredPermissions);
     this.#timeoutMs = timeoutMs;
+    if (onOperabilityEvent !== undefined && typeof onOperabilityEvent !== 'function') throw new ValidationFailureError('onOperabilityEvent must be a function.');
+    this.#onOperabilityEvent = onOperabilityEvent;
     Object.freeze(this);
   }
 
@@ -119,6 +122,7 @@ export class AgentMemoryClient {
     if (!this.#permissions.has(permission)) throw new AuthorizationFailureError(`The client configuration is missing ${permission}.`, { details: { permission } });
   }
   async #invoke(operation, request, validate) {
+    const started = performance.now();
     const payload = stableSerialize(request);
     const limit = REQUEST_LIMITS[operation];
     if (limit && Buffer.byteLength(payload) > limit) throw new ValidationFailureError(`${operation} request exceeds ${limit} UTF-8 bytes.`);
@@ -134,18 +138,41 @@ export class AgentMemoryClient {
         timeout,
       ]);
     } catch (error) {
-      if (error instanceof AgentMemoryError) throw error;
-      if (controller.signal.aborted || error?.name === 'TimeoutError') throw new TimeoutError(`Lucy request exceeded ${this.#timeoutMs}ms.`);
-      throw new UpstreamUnavailableError('Lucy transport failed.');
+      const mapped = error instanceof AgentMemoryError
+        ? error
+        : controller.signal.aborted || error?.name === 'TimeoutError'
+          ? new TimeoutError(`Lucy request exceeded ${this.#timeoutMs}ms.`)
+          : new UpstreamUnavailableError('Lucy transport failed.');
+      this.#emit(operation, started, mapped);
+      throw mapped;
     } finally { clearTimeout(timer); }
     const response = responseMetadata(raw);
-    if ((operation === 'recall' || operation === 'canonical-recall') && response.byteLength > 65536) throw new MalformedResponseError('Recall response exceeds 65536 UTF-8 bytes.', { status: response.status });
-    if (response.status < 200 || response.status >= 300) throw mapError(response, operation);
+    if ((operation === 'recall' || operation === 'canonical-recall') && response.byteLength > 65536) {
+      const error = new MalformedResponseError('Recall response exceeds 65536 UTF-8 bytes.', { status: response.status });
+      this.#emit(operation, started, error);
+      throw error;
+    }
+    if (response.status < 200 || response.status >= 300) {
+      const error = mapError(response, operation);
+      this.#emit(operation, started, error);
+      throw error;
+    }
     const validated = validate(response.body, request);
+    this.#emit(operation, started, null, response.status);
     const headerValue = response.memoryOperationId;
     if (typeof headerValue === 'string' && /^memory-[a-f0-9]{32}$/i.test(headerValue)) {
       return { ...validated, operation_id: headerValue };
     }
     return validated;
+  }
+  #emit(operation, started, error, status) {
+    if (this.#onOperabilityEvent === undefined) return;
+    this.#onOperabilityEvent({
+      event: 'upstream',
+      operation,
+      outcome: error ? 'error' : 'success',
+      duration_ms: performance.now() - started,
+      ...(error ? { error_code: error.code, status: error.status ?? undefined, throttled: error.code === 'rate_limit' } : { status }),
+    });
   }
 }

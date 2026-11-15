@@ -193,6 +193,9 @@ export async function createLucyMemoryMcpServer({
   client, name = 'lucy-memory-mcp', version = '0.1.3', admission, onOperabilityEvent,
 } = {}) {
   const memoryClient = await requireClient(client);
+  if (onOperabilityEvent !== undefined && typeof onOperabilityEvent !== 'function') {
+    throw new TypeError('onOperabilityEvent must be a function.');
+  }
   const limits = validateAdmission(admission);
   let activeRequests = 0;
   const server = new Server(

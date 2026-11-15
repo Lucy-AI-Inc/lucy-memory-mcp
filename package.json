@@ -61,6 +61,10 @@
     "./hermes": {
       "types": "./src/integrations/hermes.d.ts",
       "import": "./src/integrations/hermes.mjs"
+    },
+    "./operability": {
+      "types": "./src/operability.d.ts",
+      "import": "./src/operability.mjs"
     }
   },
   "scripts": {
@@ -70,6 +74,7 @@
     "test:mcp": "node --test tests/mcp/core-mcp-server.test.mjs",
     "test:e2e": "node --test tests/e2e/wave4-isolated-e2e.test.mjs",
     "test:package": "node --test tests/package/package-contents.test.mjs",
+    "drill:hosted-mcp": "node scripts/hosted-mcp-drill.mjs",
     "test:types": "tsc --noEmit -p tests/types/tsconfig.json",
     "validate": "npm run validate:contract && npm run validate:schemas",
     "validate:contract": "node scripts/validate-contract.mjs",

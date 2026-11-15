@@ -87,6 +87,20 @@ A pending proposal is not recallable memory. Once Lucy approves it, recall can r
 
 ## Trust boundaries
 
+### Hosted MCP operability boundary
+
+Hosted MCP telemetry is emitted only through the optional operability callback. Records use an
+allowlist of operation, outcome, bounded error/status, duration, trace ID, version evidence, and an
+optional salted workspace hash. Request arguments, response bodies, bearer tokens, raw errors, and
+memory content never enter that callback. Stdio protocol frames remain on stdout; the default
+structured sink uses stderr.
+
+Package version and hosted image evidence are separate fields. A package version is not evidence of
+the running image; deployment must supply an immutable image digest and/or full git SHA.
+
+The hosted MCP service is an independent failure domain. Its ECS service, ALB rule, kill switch, and
+rollback target must never reference the chat service.
+
 ### Credential
 
 The host supplies `LUCY_MEMORY_TOKEN` to the server process. Tool arguments cannot replace the credential or select a tenant.

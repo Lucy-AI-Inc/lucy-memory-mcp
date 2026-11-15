@@ -174,6 +174,7 @@ export interface AgentMemoryClientOptions {
   token: string;
   permissions: PublicPermission[];
   timeoutMs?: number;
+  onOperabilityEvent?: import('../operability.js').OperabilityEmitter;
 }
 
 export interface ValidatedHostedAuthContext {

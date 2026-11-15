@@ -1,0 +1,34 @@
+{
+  "widgets": [
+    {
+      "type": "metric",
+      "properties": {
+        "title": "Hosted MCP authentication failures",
+        "metrics": [["Lucy/HostedMCP", "AuthenticationFailure", "service", "${HostedMcpService}"]],
+        "stat": "Sum",
+        "period": 300
+      }
+    },
+    {
+      "type": "metric",
+      "properties": {
+        "title": "Hosted MCP tool p95 overhead (design target <= 25 ms)",
+        "metrics": [["Lucy/HostedMCP", "DurationMs", "service", "${HostedMcpService}", "event", "tool"]],
+        "stat": "p95",
+        "period": 300
+      }
+    },
+    {
+      "type": "metric",
+      "properties": {
+        "title": "Hosted MCP upstream errors and throttles",
+        "metrics": [
+          ["Lucy/HostedMCP", "UpstreamError", "service", "${HostedMcpService}"],
+          [".", "Throttled", ".", "."]
+        ],
+        "stat": "Sum",
+        "period": 300
+      }
+    }
+  ]
+}
