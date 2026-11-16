@@ -62,7 +62,7 @@ Propose in the same turn when the user asks to remember something or when a dura
 
 Before proposing, recall the likely exact key or topic. Keep one lean canonical memory: skip an equivalent memory, replace an existing memory only through the safe procedure below, say what the new version supersedes, and batch closely related facts.
 
-Safe replacement: when a proposal ID is known, prefer an `approved` `memory_proposal_status` result: map `result.memory_id` -> `memory_id` and `result.memory_version` -> `expected_version` only when `requested.key` and `requested.scope` exactly match the target. Otherwise, canonical recall's `record_id` and nullable `version` are candidates only; the recall contract does not prove that `record_id` is a memory ID. Use a recalled candidate only when its non-null exact key and scope match the target and its `record_id` matches `^mem_[A-Za-z0-9_-]+$`. From either source, use the candidate only when its version is an integer from 1 through 9007199254740990; otherwise treat the memory as not safely replaceable, do not create a duplicate, and report it. Never invent identity or version. Keep the exact key and scope and rely on the server's identity and optimistic-concurrency checks. If an existing memory cannot be resolved safely, do not create a duplicate: tell the user, then check known proposal status or re-recall once. On any rejection or conflict, re-recall once; never create a duplicate or blindly retry, and report it to the user.
+Safe replacement: use replacement identity only from an `approved` `memory_proposal_status` result. Map `result.memory_id` -> `memory_id` and `result.memory_version` -> `expected_version` only when `requested.key` and `requested.scope` exactly match the target and `result.memory_version` is an integer from 1 through 9007199254740990. Recall may show that a memory exists, identify its key, or locate a known proposal ID, but recall `record_id` is not replacement identity and must never populate `memory_id`. When no qualifying approved status result is available, treat the memory as not safely replaceable, do not create a duplicate, and tell the user or report it. Never invent identity or version. Keep the exact key and scope and rely on the server's identity and optimistic-concurrency checks. If an existing memory cannot be resolved safely, do not create a duplicate: tell the user, then check known proposal status or re-recall once. On any rejection or conflict, re-recall once; never create a duplicate or blindly retry, and report it to the user.
 
 ### Corrections first
 
@@ -70,7 +70,7 @@ When the user corrects the agent, handle memory **before continuing the task**:
 
 1. Recall the relevant key or topic.
 2. Put the user's exact correction quote in `content` or `justification` (unless it contains prohibited data).
-3. If the recalled memory has compatible current identity, version, key, and scope, replace it through the safe procedure above. If not, do not create a duplicate; tell the user and check current state.
+3. If recall finds an existing memory, replace it only with a qualifying approved proposal-status result through the safe procedure above. If none is available, do not create a duplicate; tell the user and check known proposal status or re-recall once.
 4. If no prior memory exists and the correction is durable, create one.
 
 ### Project status and episodes
@@ -83,7 +83,7 @@ When the user corrects the agent, handle memory **before continuing the task**:
 - Store the why, source, and date in `content` or `justification`.
 - Mark claims `verified` or `reported` with a `YYYY-MM-DD` date. Re-verify volatile versions, statuses, owners, prices, and URLs before acting on them.
 - Give a temporary rule an explicit `Until: YYYY-MM-DD`. Treat it as inactive after that date; when convenient, safely replace the recalled memory to mark it retired or superseded. If replacement cannot be resolved, do not duplicate it; report and check current state. There is no separate retire tool.
-- If a new rule contradicts a recalled rule, do not silently choose. Ask the user which wins. If the recalled rule wins, skip the new proposal. If the new rule wins, safely replace the recalled memory using its current identity and version; if that cannot be resolved, skip the duplicate and report/check current state.
+- If a new rule contradicts a recalled rule, do not silently choose. Ask the user which wins. If the recalled rule wins, skip the new proposal. If the new rule wins, safely replace the recalled memory using a qualifying approved proposal-status result for its current identity and version; if that cannot be resolved, skip the duplicate and report/check current state.
 - Use the narrowest scope that lets every relevant agent see the memory: user or workspace scope for rules all agents need, and project scope for project facts.
 
 Compact content template:
