@@ -96,6 +96,26 @@ test('fresh client: every fenced JSON skill example matches a real MCP input sch
   }
 });
 
+test('fresh client: documented replacement version bound matches the real MCP input schema', () => {
+  const instructions = usageSkillText();
+  const documented = instructions.match(/From either source, use the candidate only when its version is an integer from 1 through (\d+);/);
+  assert.ok(documented);
+
+  const expectedVersion = MCP_SCHEMAS.proposalInput.$defs.common.$defs.expectedVersion;
+  assert.equal(Number(documented[1]), expectedVersion.maximum);
+
+  const ajv = new Ajv2020({ strict: true, allErrors: true });
+  addFormats(ajv);
+  const validate = ajv.compile(MCP_SCHEMAS.proposalInput);
+  const replacement = {
+    operation: 'replace', memory_id: 'mem_abc', key: 'rules.core.review', scope: USER,
+    content: 'Review before release.', justification: 'Standing rule correction.',
+    idempotency_key: '123e4567-e89b-42d3-a456-426614174003',
+  };
+  assert.equal(validate({ ...replacement, expected_version: 9007199254740990 }), true);
+  assert.equal(validate({ ...replacement, expected_version: 9007199254740991 }), false);
+});
+
 test('fresh client: status identity, recalled replacement, fail-closed conflicts, reconnect idempotent', async (t) => {
   const lucy = await listenIsolatedAm01({ token: 'fresh-token' });
   t.after(() => lucy.close());
