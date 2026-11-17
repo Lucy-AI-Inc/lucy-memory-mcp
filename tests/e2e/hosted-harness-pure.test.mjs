@@ -1,4 +1,7 @@
 import assert from 'node:assert/strict';
+import { mkdtempSync, rmSync, writeFileSync } from 'node:fs';
+import { tmpdir } from 'node:os';
+import { basename, join } from 'node:path';
 import test from 'node:test';
 import {
   E2E_CASES,
@@ -6,6 +9,7 @@ import {
   E2E_PORTS,
   assertSanitizedEvidence,
   isOwnedProjectId,
+  migrationAuthority,
   pkceChallenge,
   rewriteSupabaseConfig,
 } from '../../scripts/e2e/lib.mjs';
@@ -23,6 +27,23 @@ test('disposable Supabase config uses only dedicated 56321-56329 ports', () => {
 
 test('PKCE S256 matches the RFC 7636 example', () => {
   assert.equal(pkceChallenge('dBjftJeZ4CVP-mB92K27uhbUJU1p1r_wW1gFWFOEjXk'), 'E9Melhoa2OwvFrEMTJguCHaoeK1t8URWbuGJSstw-cM');
+});
+
+test('hosted admission migration is identified by its SQL authority, not its timestamp', (t) => {
+  const directory = mkdtempSync(join(tmpdir(), 'hmcp-migrations-'));
+  t.after(() => rmSync(directory, { recursive: true, force: true }));
+  const ordinary = join(directory, '20000101000000_ordinary.sql');
+  const admission = join(directory, '20261116070100_hosted_mcp_admission.sql');
+  writeFileSync(ordinary, 'CREATE TABLE public.ordinary (id integer);\n');
+  writeFileSync(admission, [
+    'CREATE OR REPLACE FUNCTION public.acquire_hosted_mcp_admission() RETURNS void AS $$ BEGIN END; $$ LANGUAGE plpgsql;',
+    'CREATE OR REPLACE FUNCTION public.release_hosted_mcp_admission() RETURNS void AS $$ BEGIN END; $$ LANGUAGE plpgsql;',
+    '',
+  ].join('\n'));
+
+  assert.equal(basename(migrationAuthority([ordinary, admission])), basename(admission));
+  assert.throws(() => migrationAuthority([ordinary]), /expected exactly one hosted admission migration, found 0/);
+  assert.throws(() => migrationAuthority([admission, admission]), /expected exactly one hosted admission migration, found 2/);
 });
 
 test('evidence sanitizer rejects secret-bearing keys and case inventory is complete', () => {

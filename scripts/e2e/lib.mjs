@@ -88,7 +88,11 @@ export function rewriteSupabaseConfig(source, projectId) {
 }
 
 export function migrationAuthority(files) {
-  const matches = files.filter((file) => /acquire_hosted_mcp_admission/i.test(readFileSync(file, 'utf8')));
+  const matches = files.filter((file) => {
+    const sql = readFileSync(file, 'utf8');
+    return /create\s+(?:or\s+replace\s+)?function\s+public\.acquire_hosted_mcp_admission\s*\(/i.test(sql)
+      && /create\s+(?:or\s+replace\s+)?function\s+public\.release_hosted_mcp_admission\s*\(/i.test(sql);
+  });
   if (matches.length !== 1) throw new Error(`expected exactly one hosted admission migration, found ${matches.length}`);
   return matches[0];
 }

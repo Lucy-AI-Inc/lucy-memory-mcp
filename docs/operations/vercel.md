@@ -43,7 +43,7 @@ PRODUCT enforces shared Postgres admission separately: 50 global concurrent upst
 
 1. Create/link `lucy-memory-mcp`, select staging/private-beta access, enable Fluid compute, install the environment contract, and leave `HOSTED_MCP_ENABLED=false`.
 2. Deploy the reviewed SHA. Confirm `GET /healthz` reports disabled, both OAuth metadata URLs are identical, and `GET /mcp` is 405 with `Allow: POST`.
-3. Confirm PRODUCT's independent `HOSTED_MCP_PRODUCT_ENABLED` switch and the single migration `supabase/migrations/20261116051300_hosted_mcp_admission.sql` are ready.
+3. Confirm PRODUCT's independent `HOSTED_MCP_PRODUCT_ENABLED` switch and the single migration `supabase/migrations/20261116070100_hosted_mcp_admission.sql` are ready.
 4. Enable PRODUCT first, then set MCP `HOSTED_MCP_ENABLED=true`. Confirm health, OAuth revocation, all three tools, shared limits, log redaction, and ordinary chat health with disposable staging identities.
 5. Capture deployment SHA/digest, project settings, firewall/spend/DNS evidence, sampled redacted logs, and two-instance global-cap evidence. Local evidence never substitutes for these hosted checks.
 

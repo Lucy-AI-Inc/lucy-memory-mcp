@@ -216,8 +216,9 @@ function stageSupabase({ oldSchema = false } = {}) {
   }
   const config = rewriteSupabaseConfig(readFileSync(resolve(source, 'config.toml'), 'utf8'), projectId);
   writeFileSync(resolve(target, 'config.toml'), config, { mode: 0o600 });
-  const migration = resolve(target, 'migrations/20261116051300_hosted_mcp_admission.sql');
-  if (!existsSync(migration)) throw new Error('required hosted admission migration is missing');
+  const migrationFiles = readdirSync(resolve(target, 'migrations'))
+    .filter((name) => name.endsWith('.sql')).map((name) => resolve(target, 'migrations', name));
+  const migration = migrationAuthority(migrationFiles);
   if (oldSchema) rmSync(migration);
 }
 
@@ -573,7 +574,6 @@ async function main() {
   const migrationFiles = readdirSync(resolve(PRODUCT, 'supabase/migrations'))
     .filter((name) => name.endsWith('.sql')).map((name) => resolve(PRODUCT, 'supabase/migrations', name));
   const migration = migrationAuthority(migrationFiles);
-  assert.equal(basename(migration), '20261116051300_hosted_mcp_admission.sql');
 
   await startOAuth();
   let status = await startStack();
