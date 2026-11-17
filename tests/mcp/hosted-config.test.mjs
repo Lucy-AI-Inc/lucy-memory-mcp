@@ -55,7 +55,9 @@ test('loopback HTTP requires explicit non-production opt-in', () => {
     HOSTED_MCP_ALLOW_INSECURE_LOOPBACK: 'true',
     VERCEL_ENV: 'development',
   };
-  assert.equal(loadHostedMcpConfig(local).allowInsecureLoopback, true);
+  const config = loadHostedMcpConfig(local);
+  assert.equal(config.allowInsecureLoopback, true);
+  assert.equal(config.oauthIssuer, 'http://127.0.0.1:3192');
   assert.throws(() => loadHostedMcpConfig({ ...local, VERCEL_ENV: 'production' }));
   assert.throws(() => loadHostedMcpConfig({ ...local, VERCEL: '1' }));
   assert.throws(() => loadHostedMcpConfig({ ...local, HOSTED_MCP_PRODUCT_BASE_URL: 'http://192.0.2.1:3190' }));

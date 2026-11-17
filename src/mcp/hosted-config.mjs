@@ -19,14 +19,14 @@ function loopback(hostname) {
   return isIP(literal) === 6 && literal === '::1';
 }
 
-function absoluteUrl(value, { allowInsecureLoopback, originOnly = false } = {}) {
+function absoluteUrl(value, { allowInsecureLoopback, originOnly = false, preserveOrigin = false } = {}) {
   if (typeof value !== 'string' || !value || /[\r\n\0]/.test(value)) invalid();
   let url;
   try { url = new URL(value); } catch { invalid(); }
   const insecure = allowInsecureLoopback && url.protocol === 'http:' && loopback(url.hostname);
   if ((url.protocol !== 'https:' && !insecure) || url.username || url.password || url.hash) invalid();
   if (originOnly && (url.pathname !== '/' || url.search)) invalid();
-  return originOnly ? url.origin : url.href;
+  return originOnly || (preserveOrigin && value === url.origin) ? url.origin : url.href;
 }
 
 function secret(value, { noWhitespace = false, noComma = false } = {}) {
@@ -109,7 +109,7 @@ export function loadHostedMcpConfig(environment = process.env) {
       || oauthIntrospectionAuthorization === productServiceCredential) invalid();
     return Object.freeze({
       ...common,
-      oauthIssuer: absoluteUrl(environment.HOSTED_MCP_OAUTH_ISSUER, { allowInsecureLoopback }),
+      oauthIssuer: absoluteUrl(environment.HOSTED_MCP_OAUTH_ISSUER, { allowInsecureLoopback, preserveOrigin: true }),
       oauthJwksUrl: absoluteUrl(environment.HOSTED_MCP_OAUTH_JWKS_URL, { allowInsecureLoopback }),
       oauthIntrospectionUrl: absoluteUrl(environment.HOSTED_MCP_OAUTH_INTROSPECTION_URL, { allowInsecureLoopback }),
       oauthIntrospectionAuthorization,

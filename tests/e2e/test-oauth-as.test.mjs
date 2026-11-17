@@ -3,6 +3,7 @@ import { Readable } from 'node:stream';
 import test from 'node:test';
 import { createTestOAuthAuthority } from '../../scripts/e2e/test-oauth-as.mjs';
 import { pkceChallenge } from '../../scripts/e2e/lib.mjs';
+import { createOAuthResourceServer } from '../../src/mcp/resource-server.mjs';
 
 const BIND = 'binding-credential-00000000000000000000000';
 const INTROSPECTION = 'Basic introspection-credential-0000000000000000';
@@ -29,7 +30,7 @@ function invoke(authority, { method = 'GET', path = '/', headers = {}, body = ''
 
 const form = (value) => new URLSearchParams(value).toString();
 
-test('TEST-ONLY AS enforces exact redirect and PKCE S256, binding before approval, single-use code, and revocation', async () => {
+test('TEST-ONLY AS enforces PKCE binding, resource-server auth, single-use code, and revocation', async () => {
   const authority = createTestOAuthAuthority({
     bindingCredential: BIND,
     introspectionAuthorization: INTROSPECTION,
@@ -95,6 +96,25 @@ test('TEST-ONLY AS enforces exact redirect and PKCE S256, binding before approva
     body: form({ token }),
   });
   assert.equal(JSON.parse(active.text).active, true);
+  const resourceServer = createOAuthResourceServer({
+    resource: 'http://127.0.0.1:3191/mcp',
+    issuer: 'http://127.0.0.1:3192',
+    jwksUri: 'http://127.0.0.1:3192/jwks',
+    introspectionEndpoint: 'http://127.0.0.1:3192/introspect',
+    introspectionAuthorization: INTROSPECTION,
+    allowInsecureLoopback: true,
+    fetchImpl: async (url, init = {}) => {
+      const response = await invoke(authority, {
+        method: init.method, path: new URL(url).pathname, headers: init.headers, body: init.body,
+      });
+      return new Response(response.text, { status: response.status, headers: response.headers });
+    },
+  });
+  assert.deepEqual(await resourceServer.authenticate({ authorization: `Bearer ${token}` }), {
+    subject: SUBJECT,
+    workspaceId: WORKSPACE,
+    scopes: ['memory:read', 'memory:propose'],
+  });
   await invoke(authority, {
     method: 'POST', path: '/revoke', headers: { authorization: `Bearer ${CONTROL}`, 'content-type': 'application/json' },
     body: JSON.stringify({ token }),

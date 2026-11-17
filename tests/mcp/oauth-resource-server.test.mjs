@@ -114,6 +114,18 @@ test('RS256 validation returns only the signed bearer-free subject/workspace/sco
   assert.equal(JSON.stringify(context).includes(token), false);
 });
 
+test('root issuer identity is preserved exactly without adding a trailing slash', async () => {
+  const issuer = 'https://auth.example.test';
+  const server = createOAuthResourceServer(options({ issuer }));
+  assert.deepEqual(server.metadata.authorization_servers, [issuer]);
+  assert.equal((await server.authenticate({
+    authorization: `Bearer ${jwt({ iss: issuer })}`,
+  })).workspaceId, WORKSPACE);
+  await failure(server.authenticate({
+    authorization: `Bearer ${jwt({ iss: `${issuer}/` })}`,
+  }), 'invalid_token', 401);
+});
+
 test('ES256 accepts the JOSE 64-byte P1363 signature form', async () => {
   const context = await createOAuthResourceServer(options()).authenticate({
     authorization: `Bearer ${jwt({}, { algorithm: 'ES256', key: ecPrivate, kid: 'ec-1' })}`,

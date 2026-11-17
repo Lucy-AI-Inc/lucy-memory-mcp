@@ -38,7 +38,7 @@ function loopback(hostname) {
   return isIP(literal) === 6 && literal === '::1';
 }
 
-function exactUrl(value, name, { allowInsecureLoopback = false } = {}) {
+function exactUrl(value, name, { allowInsecureLoopback = false, preserveOrigin = false } = {}) {
   if (typeof value !== 'string') throw new TypeError(`${name} must be an absolute HTTPS URL.`);
   let url;
   try { url = new URL(value); } catch { throw new TypeError(`${name} must be an absolute HTTPS URL.`); }
@@ -46,7 +46,7 @@ function exactUrl(value, name, { allowInsecureLoopback = false } = {}) {
   if ((url.protocol !== 'https:' && !insecureAllowed) || url.username || url.password || url.hash) {
     throw new TypeError(`${name} must be an absolute HTTPS URL without credentials or a fragment.`);
   }
-  return url.href;
+  return preserveOrigin && value === url.origin ? url.origin : url.href;
 }
 
 function nonempty(value, name) {
@@ -260,7 +260,10 @@ export function createProtectedResourceMetadata({
 } = {}) {
   const canonicalResource = exactUrl(resource, 'resource', { allowInsecureLoopback });
   const servers = exactArray(authorizationServers, 'authorizationServers')
-    .map((server) => exactUrl(server, 'authorizationServers item', { allowInsecureLoopback }));
+    .map((server) => exactUrl(server, 'authorizationServers item', {
+      allowInsecureLoopback,
+      preserveOrigin: true,
+    }));
   const scopes = exactArray(scopesSupported, 'scopesSupported');
   if (scopes.some((scope) => !HOSTED_MCP_SUPPORTED_SCOPES.includes(scope))) {
     throw new TypeError('scopesSupported may contain only memory:read and memory:propose.');
@@ -288,7 +291,7 @@ export function createOAuthResourceServer({
   logger = () => {},
 } = {}) {
   const canonicalResource = exactUrl(resource, 'resource', { allowInsecureLoopback });
-  const canonicalIssuer = exactUrl(issuer, 'issuer', { allowInsecureLoopback });
+  const canonicalIssuer = exactUrl(issuer, 'issuer', { allowInsecureLoopback, preserveOrigin: true });
   const canonicalJwksUri = exactUrl(jwksUri, 'jwksUri', { allowInsecureLoopback });
   const canonicalIntrospection = exactUrl(introspectionEndpoint, 'introspectionEndpoint', { allowInsecureLoopback });
   const providerAuthorization = nonempty(introspectionAuthorization, 'introspectionAuthorization');

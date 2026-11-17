@@ -817,7 +817,7 @@ async function main() {
     } finally { await restartProduct(status, true); }
     return 'PRODUCT switch disabled hosted calls without affecting health';
   });
-  await mcp.close();
+  await mcp?.close();
   await record('log_redaction', async () => {
     refreshEvidenceLogs();
     const logs = [MCP_LOG, PRODUCT_LOG, OAUTH_LOG, OBSERVER_LOG].map((path) => readFileSync(path, 'utf8')).join('\n');

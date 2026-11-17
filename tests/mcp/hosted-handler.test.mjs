@@ -5,9 +5,9 @@ import { createHostedMcpHandler } from '../../src/mcp/hosted-handler.mjs';
 import { LUCY_MEMORY_TOOL_NAMES } from '../../src/mcp/server.mjs';
 
 const RESOURCE = 'https://mcp-beta.example.test/mcp';
-const ISSUER = 'https://auth.example.test/';
-const JWKS = `${ISSUER}jwks`;
-const INTROSPECTION = `${ISSUER}introspect`;
+const ISSUER = 'https://auth.example.test';
+const JWKS = `${ISSUER}/jwks`;
+const INTROSPECTION = `${ISSUER}/introspect`;
 const PRODUCT = 'https://product.example.test';
 const SUBJECT = '11111111-1111-1111-1111-111111111111';
 const WORKSPACE = '22222222-2222-2222-2222-222222222222';
