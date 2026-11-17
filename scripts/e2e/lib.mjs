@@ -108,6 +108,22 @@ function setTomlBoolean(source, section, key, value) {
   return lines.join(newline);
 }
 
+function stripSupabaseFunctionSections(source) {
+  const newline = source.includes('\r\n') ? '\r\n' : '\n';
+  const lines = source.split(/\r?\n/);
+  let inFunctionSection = false;
+  const output = [];
+
+  for (const line of lines) {
+    if (/^\s*\[\[?.+\]\]?\s*(?:#.*)?$/.test(line)) {
+      inFunctionSection = /^\s*\[\[?\s*functions\s*(?:\.|\]\]?)/.test(line);
+    }
+    if (!inFunctionSection) output.push(line);
+  }
+
+  return output.join(newline);
+}
+
 export function rewriteSupabaseConfig(source, projectId) {
   if (typeof source !== 'string' || !/^lucy-hmcp-e2e-[a-f0-9]{12}$/.test(projectId)) {
     throw new Error('invalid disposable Supabase project id');
@@ -126,10 +142,12 @@ export function rewriteSupabaseConfig(source, projectId) {
   // the PRODUCT tree at <workdir>/supabase, so preserve those references by
   // rebasing project-relative paths to that copied tree.
   output = rebaseSupabaseContentPaths(output);
-  // The proof exercises PRODUCT over PostgREST/Auth and never invokes PRODUCT
-  // Edge Functions. Starting the edge runtime would make the Supabase CLI
-  // bundle every staged function, including imports outside supabase/, and is
-  // both unnecessary and incompatible with an isolated Supabase-only copy.
+  // The CLI resolves and bundles configured function entrypoints during
+  // `supabase start` even when edge_runtime.enabled is false. The proof uses
+  // PRODUCT HTTP routes only, so remove every PRODUCT function declaration
+  // from the disposable project and keep the runtime disabled as defense in
+  // depth. Migrations, Auth, templates, and seed configuration remain intact.
+  output = stripSupabaseFunctionSections(output);
   output = setTomlBoolean(output, 'edge_runtime', 'enabled', false);
   if (!/^\[analytics\]/m.test(output)) {
     output += `\n[analytics]\nenabled = true\nport = ${E2E_PORTS.analytics}\nvector_port = ${E2E_PORTS.vector}\n`;
@@ -164,10 +182,10 @@ export function stageSupabaseProject(source, target, projectId, { oldSchema = fa
   if (existsSync(targetRoot)) rmSync(targetRoot, { recursive: true, force: true });
   mkdirSync(targetRoot, { recursive: true });
   cpSync(migrationsPath, resolve(targetRoot, 'migrations'), { recursive: true });
-  // Keep the Supabase tree faithful for migrations, seeding, auth templates,
-  // and configuration. Edge execution is explicitly disabled above because
-  // this proof reaches PRODUCT routes rather than PRODUCT Edge Functions.
-  for (const name of ['seed.sql', 'templates', 'functions']) {
+  // Copy only the assets used by this proof. PRODUCT Edge Function sources can
+  // import application files outside supabase/, and staging them would let a
+  // future CLI behavior change rediscover and bundle those entrypoints.
+  for (const name of ['seed.sql', 'templates']) {
     const from = resolve(sourceRoot, name);
     if (existsSync(from)) cpSync(from, resolve(targetRoot, name), { recursive: true });
   }

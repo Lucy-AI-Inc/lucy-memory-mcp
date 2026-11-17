@@ -31,9 +31,12 @@ test('disposable Supabase config rewrites owned ports and staged file paths', ()
 });
 
 test('disposable Supabase config overrides an enabled edge runtime', () => {
-  const output = rewriteSupabaseConfig(`${config}\n[edge_runtime]\nenabled = true # local default\n`, 'lucy-hmcp-e2e-012345abcdef');
+  const output = rewriteSupabaseConfig(`${config}\n[edge_runtime]\nenabled = true # local default\n\n[functions.stripe-webhook]\nverify_jwt = false\nentrypoint = "./functions/stripe-webhook/index.ts"\n\n[functions."billing-refresh"]\nverify_jwt = true\n\n[storage]\nenabled = true\n`, 'lucy-hmcp-e2e-012345abcdef');
   assert.match(output, /\[edge_runtime\]\nenabled = false # local default/);
   assert.doesNotMatch(output, /enabled = true # local default/);
+  assert.doesNotMatch(output, /^\s*\[functions(?:\.|\])/m);
+  assert.doesNotMatch(output, /stripe-webhook|billing-refresh|entrypoint/);
+  assert.match(output, /\[storage\]\nenabled = true/);
 });
 
 test('PKCE S256 matches the RFC 7636 example', () => {
@@ -57,7 +60,7 @@ test('hosted admission migration is identified by its SQL authority, not its tim
   assert.throws(() => migrationAuthority([admission, admission]), /expected exactly one hosted admission migration, found 2/);
 });
 
-test('disposable Supabase staging disables Edge execution and preserves source files', (t) => {
+test('disposable Supabase staging excludes PRODUCT Edge Functions', (t) => {
   const directory = mkdtempSync(join(tmpdir(), 'hmcp-supabase-stage-'));
   t.after(() => rmSync(directory, { recursive: true, force: true }));
   const source = join(directory, 'product-supabase');
@@ -79,14 +82,15 @@ test('disposable Supabase staging disables Edge execution and preserves source f
 
   stageSupabaseProject(source, target, 'lucy-hmcp-e2e-012345abcdef');
 
-  assert.match(readFileSync(join(target, 'config.toml'), 'utf8'), /\[edge_runtime\]\nenabled = false/);
-  assert.equal(readFileSync(join(target, 'functions', 'stripe-webhook', 'index.ts'), 'utf8'), "import '../_shared/runtime.ts';\n");
-  assert.equal(readFileSync(join(target, 'functions', '_shared', 'runtime.ts'), 'utf8'), 'export {};\n');
+  const stagedConfig = readFileSync(join(target, 'config.toml'), 'utf8');
+  assert.match(stagedConfig, /\[edge_runtime\]\nenabled = false/);
+  assert.doesNotMatch(stagedConfig, /^\s*\[functions(?:\.|\])/m);
+  assert.equal(existsSync(join(target, 'functions')), false);
   assert.equal(readFileSync(join(target, 'seed.sql'), 'utf8'), '-- disposable seed\n');
   assert.equal(readFileSync(join(target, 'templates', 'confirmation.html'), 'utf8'), 'confirm\n');
 
   stageSupabaseProject(source, target, 'lucy-hmcp-e2e-012345abcdef', { oldSchema: true });
-  assert.equal(readFileSync(join(target, 'functions', 'stripe-webhook', 'index.ts'), 'utf8'), "import '../_shared/runtime.ts';\n");
+  assert.equal(existsSync(join(target, 'functions')), false);
   assert.equal(existsSync(join(target, 'migrations', '20261116051300_hosted_mcp_admission.sql')), false);
 });
 
