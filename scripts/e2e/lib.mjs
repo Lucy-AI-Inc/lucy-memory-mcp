@@ -1,4 +1,5 @@
 import { createHash } from 'node:crypto';
+import { execFileSync } from 'node:child_process';
 import {
   cpSync,
   existsSync,
@@ -60,15 +61,6 @@ export const E2E_GATE_IDS = Object.freeze({
 });
 
 const LUC898_MIGRATION = '20261016040000_luc898_manual_memory_storage.sql';
-const LUC898_HEADER = '-- LUC-898: forward-only manual governed-memory storage boundary.';
-const LUC898_BATCH_BOUNDARY = '-- LUC898_BATCH_BOUNDARY\n';
-const LUC898_RELATIONS = Object.freeze([
-  'memory_events', 'active_memories', 'proposal_events', 'active_proposals',
-  'governed_memory_retrieval_index', 'run_events', 'trace_events',
-  'conversation_events', 'conversation_threads', 'conversation_summaries',
-  'billing_settlement_intents', 'lucy_jobs', 'lucy_tool_results',
-  'lucy_tool_executions',
-]);
 
 export function requireAbsoluteDirectory(value, name) {
   if (typeof value !== 'string' || !isAbsolute(value) || value.includes('\0')) {
@@ -135,24 +127,6 @@ function stripSupabaseFunctionSections(source) {
   return output.join(newline);
 }
 
-function prepareFreshLuc898Migration(source) {
-  if (source.split(LUC898_HEADER).length !== 2
-    || source.split(LUC898_BATCH_BOUNDARY).length !== 2) {
-    throw new Error('PRODUCT LUC-898 migration phase boundary mismatch');
-  }
-  const relations = LUC898_RELATIONS.map((name) => `'${name}'`).join(',');
-  const batches = `DO $hmcp_fresh_batches$ DECLARE relation_name text; n integer; cursor_key jsonb;
-  BEGIN FOREACH relation_name IN ARRAY ARRAY[${relations}] LOOP
-    cursor_key := NULL;
-    LOOP SELECT checked_count,last_key INTO n,cursor_key
-      FROM pg_temp.luc898_check_batch(relation_name,cursor_key);
-      EXIT WHEN n < 16;
-    END LOOP;
-    PERFORM pg_temp.luc898_finish_relation(relation_name);
-  END LOOP; END $hmcp_fresh_batches$;\n`;
-  return source.replace(LUC898_BATCH_BOUNDARY, LUC898_BATCH_BOUNDARY + batches);
-}
-
 export function rewriteSupabaseConfig(source, projectId) {
   if (typeof source !== 'string' || !/^lucy-hmcp-e2e-[a-f0-9]{12}$/.test(projectId)) {
     throw new Error('invalid disposable Supabase project id');
@@ -211,12 +185,19 @@ export function stageSupabaseProject(source, target, projectId, { oldSchema = fa
   if (existsSync(targetRoot)) rmSync(targetRoot, { recursive: true, force: true });
   mkdirSync(targetRoot, { recursive: true });
   cpSync(migrationsPath, resolve(targetRoot, 'migrations'), { recursive: true });
+  const luc898Source = resolve(migrationsPath, LUC898_MIGRATION);
   const luc898Path = resolve(targetRoot, 'migrations', LUC898_MIGRATION);
-  if (existsSync(luc898Path)) {
-    // PRODUCT's migration requires its bounded installer phase even on a fresh
-    // database. Drive every empty/synthetic relation before its final guards;
-    // an unexpected unsafe row still fails against the empty operator manifest.
-    writeFileSync(luc898Path, prepareFreshLuc898Migration(readFileSync(luc898Path, 'utf8')), { mode: 0o600 });
+  if (existsSync(luc898Source)) {
+    // PRODUCT owns the SHA-pinned fresh-fixture phase; the hosted proof must not duplicate its SQL.
+    const fixtureInstaller = resolve(sourceRoot, '../scripts/lib/luc898_fixture_sql.py');
+    if (!existsSync(fixtureInstaller)) throw new Error('PRODUCT LUC-898 fixture installer is unavailable');
+    try {
+      execFileSync(process.platform === 'win32' ? 'python' : 'python3', [
+        '-S', fixtureInstaller, luc898Source, luc898Path,
+      ], { timeout: 10_000, stdio: 'pipe' });
+    } catch {
+      throw new Error('PRODUCT LUC-898 fixture installer failed');
+    }
   }
   // Copy only the assets used by this proof. PRODUCT Edge Function sources can
   // import application files outside supabase/, and staging them would let a

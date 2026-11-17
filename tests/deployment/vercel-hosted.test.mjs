@@ -1,7 +1,8 @@
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
+import { Writable } from 'node:stream';
 import test from 'node:test';
-import vercelHandler from '../../api/index.mjs';
+import vercelHandler, { writeWebResponse } from '../../api/index.mjs';
 
 const root = new URL('../../', import.meta.url);
 const read = (path) => readFileSync(new URL(path, root), 'utf8');
@@ -61,4 +62,22 @@ test('exported Vercel entry accepts a web Request and returns the shared web Res
     if (prior === undefined) delete process.env.HOSTED_MCP_ENABLED;
     else process.env.HOSTED_MCP_ENABLED = prior;
   }
+});
+
+test('Vercel response piping settles when the client closes before finish', { timeout: 1_000 }, async () => {
+  const response = new Writable({
+    write(_chunk, _encoding, callback) {
+      callback();
+      queueMicrotask(() => this.emit('close'));
+    },
+  });
+  response.writeHead = () => response;
+  const body = new ReadableStream({
+    start(controller) {
+      controller.enqueue(new TextEncoder().encode('partial'));
+    },
+  });
+
+  await writeWebResponse(new Response(body), response);
+  assert.equal(response.writableFinished, false);
 });

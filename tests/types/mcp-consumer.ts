@@ -53,6 +53,24 @@ const resourceServer = createOAuthResourceServer({
 void resourceServer.authenticate({
   authorization: 'Bearer caller-token',
 });
+const legacyResourceServer = createOAuthResourceServer({
+  resource: metadata.resource,
+  issuer: metadata.authorization_servers[0],
+  introspectionEndpoint: 'https://auth.example.test/introspect',
+  resolveMembership: async ({ subject }) => ({
+    userId: subject,
+    workspaceId: 'workspace_legacy',
+  }),
+  createHostedClient: async () => client,
+  staticBearer: {
+    token: 'legacy-staging-token',
+    resources: ['https://legacy-staging.example.test/mcp'],
+  },
+});
+void legacyResourceServer.authorize({
+  authorization: 'Bearer caller-token',
+  operation: 'memory_recall',
+});
 const hermesOptions: HermesLucyInstallOptions = {
   profilePath: '/tmp/lucy-profile',
   artifact: { sourcePath: '/tmp/lucy-memory-mcp.mjs', nodePath: '/usr/bin/node', version: '1.0.0', expectedSourceGitSha: '0123456789abcdef0123456789abcdef01234567' },

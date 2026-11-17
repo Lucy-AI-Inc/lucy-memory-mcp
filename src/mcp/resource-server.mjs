@@ -1,5 +1,6 @@
-import { createPublicKey, verify } from 'node:crypto';
+import { createPublicKey, timingSafeEqual, verify } from 'node:crypto';
 import { isIP } from 'node:net';
+import { AgentMemoryClient } from '../client/client.mjs';
 
 export const HOSTED_MCP_OPERATION_SCOPES = Object.freeze({
   memory_recall: 'memory:read',
@@ -169,6 +170,39 @@ function validateClaims(claims, { issuer, resource, now, clockToleranceSeconds }
   });
 }
 
+function validateLegacyClaims(claims, {
+  issuer, audience, resource, requiredScope, now, clockToleranceSeconds,
+}) {
+  if (claims.iss !== issuer
+    || !claimContains(claims.aud, audience)
+    || !claimContains(claims.resource, resource)
+    || typeof claims.sub !== 'string'
+    || claims.sub.length === 0
+    || !Number.isFinite(claims.exp)
+    || claims.exp <= now - clockToleranceSeconds
+    || (claims.nbf !== undefined && (!Number.isFinite(claims.nbf) || claims.nbf > now + clockToleranceSeconds))) {
+    throw new OAuthResourceServerError('invalid_token');
+  }
+  const scopes = scopesFrom(claims.scope);
+  if (!scopes.has(requiredScope)) throw new OAuthResourceServerError('insufficient_scope', 403);
+  return scopes;
+}
+
+function validateIdentity(value, subject) {
+  if (value === null || typeof value !== 'object' || Array.isArray(value)
+    || typeof value.userId !== 'string' || value.userId.length === 0
+    || typeof value.workspaceId !== 'string' || value.workspaceId.length === 0) {
+    throw new OAuthResourceServerError('invalid_token');
+  }
+  return Object.freeze({ userId: value.userId, workspaceId: value.workspaceId, subject });
+}
+
+function sameSecret(left, right) {
+  const a = Buffer.from(left);
+  const b = Buffer.from(right);
+  return a.length === b.length && timingSafeEqual(a, b);
+}
+
 function dependencySignal(parent, timeoutMs) {
   const timeout = AbortSignal.timeout(timeoutMs);
   return parent ? AbortSignal.any([parent, timeout]) : timeout;
@@ -279,6 +313,7 @@ export function createProtectedResourceMetadata({
 export function createOAuthResourceServer({
   resource,
   issuer,
+  audience = resource,
   jwksUri,
   introspectionEndpoint,
   introspectionAuthorization,
@@ -288,13 +323,38 @@ export function createOAuthResourceServer({
   clockToleranceSeconds = 30,
   requestTimeoutMs = 3_000,
   allowInsecureLoopback = false,
+  resolveMembership,
+  createHostedClient,
   logger = () => {},
+  staticBearer,
 } = {}) {
+  const legacyMode = resolveMembership !== undefined
+    || createHostedClient !== undefined
+    || staticBearer !== undefined;
   const canonicalResource = exactUrl(resource, 'resource', { allowInsecureLoopback });
   const canonicalIssuer = exactUrl(issuer, 'issuer', { allowInsecureLoopback, preserveOrigin: true });
-  const canonicalJwksUri = exactUrl(jwksUri, 'jwksUri', { allowInsecureLoopback });
-  const canonicalIntrospection = exactUrl(introspectionEndpoint, 'introspectionEndpoint', { allowInsecureLoopback });
-  const providerAuthorization = nonempty(introspectionAuthorization, 'introspectionAuthorization');
+  const canonicalAudience = nonempty(audience, 'audience');
+  const canonicalJwksUri = jwksUri === undefined
+    ? undefined
+    : exactUrl(jwksUri, 'jwksUri', { allowInsecureLoopback });
+  const canonicalIntrospection = introspectionEndpoint === undefined
+    ? undefined
+    : exactUrl(introspectionEndpoint, 'introspectionEndpoint', { allowInsecureLoopback });
+  if (!canonicalJwksUri && !canonicalIntrospection) {
+    throw new TypeError('jwksUri or introspectionEndpoint is required.');
+  }
+  if (canonicalJwksUri && !canonicalIntrospection) {
+    throw new TypeError('JWT validation requires introspectionEndpoint for fail-closed revocation checks.');
+  }
+  if (!legacyMode && (!canonicalJwksUri || !canonicalIntrospection)) {
+    throw new TypeError('Hosted authentication requires both jwksUri and introspectionEndpoint.');
+  }
+  const providerAuthorization = introspectionAuthorization === undefined
+    ? undefined
+    : nonempty(introspectionAuthorization, 'introspectionAuthorization');
+  if (!legacyMode && providerAuthorization === undefined) {
+    throw new TypeError('Hosted authentication requires introspectionAuthorization.');
+  }
   const approvedAlgorithms = exactArray(algorithms, 'algorithms');
   if (approvedAlgorithms.some((algorithm) => !['RS256', 'ES256'].includes(algorithm))) {
     throw new TypeError('Only RS256 and ES256 are supported.');
@@ -302,21 +362,40 @@ export function createOAuthResourceServer({
   if (typeof fetchImpl !== 'function' || typeof now !== 'function' || typeof logger !== 'function') {
     throw new TypeError('fetchImpl, now, and logger must be functions.');
   }
-  if (!Number.isFinite(clockToleranceSeconds) || clockToleranceSeconds < 0 || clockToleranceSeconds > 30) {
-    throw new TypeError('clockToleranceSeconds must be from 0 through 30.');
+  if (legacyMode && (typeof resolveMembership !== 'function' || typeof createHostedClient !== 'function')) {
+    throw new TypeError('resolveMembership and createHostedClient must be functions.');
+  }
+  const maximumClockTolerance = legacyMode ? 300 : 30;
+  if (!Number.isFinite(clockToleranceSeconds)
+    || clockToleranceSeconds < 0
+    || clockToleranceSeconds > maximumClockTolerance) {
+    throw new TypeError(`clockToleranceSeconds must be from 0 through ${maximumClockTolerance}.`);
   }
   if (!Number.isSafeInteger(requestTimeoutMs) || requestTimeoutMs < 1 || requestTimeoutMs > 3_000) {
     throw new TypeError('requestTimeoutMs must be an integer from 1 through 3000.');
   }
 
+  let legacy;
+  if (staticBearer !== undefined) {
+    const token = nonempty(staticBearer?.token, 'staticBearer.token');
+    const resources = exactArray(staticBearer?.resources, 'staticBearer.resources')
+      .map((value) => exactUrl(value, 'staticBearer.resources item', { allowInsecureLoopback }));
+    if (resources.includes(canonicalResource)) {
+      throw new TypeError('staticBearer.resources must not include the OAuth resource.');
+    }
+    legacy = Object.freeze({ token, resources: new Set(resources) });
+  }
+
   async function introspect(token, signal) {
+    if (!canonicalIntrospection) throw new OAuthResourceServerError('temporarily_unavailable', 503);
+    const headers = {
+      accept: 'application/json',
+      'content-type': 'application/x-www-form-urlencoded',
+    };
+    if (providerAuthorization !== undefined) headers.authorization = providerAuthorization;
     const active = await fetchJson(fetchImpl, canonicalIntrospection, {
       method: 'POST',
-      headers: {
-        accept: 'application/json',
-        authorization: providerAuthorization,
-        'content-type': 'application/x-www-form-urlencoded',
-      },
+      headers,
       body: new URLSearchParams({ token }).toString(),
     }, requestTimeoutMs, signal);
     if (active.active !== true) throw new OAuthResourceServerError('invalid_token');
@@ -336,16 +415,23 @@ export function createOAuthResourceServer({
     }, requestTimeoutMs, signal);
     if (!Array.isArray(jwks.keys)) throw new OAuthResourceServerError('temporarily_unavailable', 503);
     const matchingKid = jwks.keys.filter((candidate) => candidate?.kid === header.kid);
-    if (matchingKid.length !== 1 || matchingKid[0]?.alg !== header.alg) {
+    const key = legacyMode
+      ? matchingKid.find((candidate) => candidate?.alg === header.alg)
+      : matchingKid[0];
+    if (!key || (!legacyMode && (matchingKid.length !== 1 || key.alg !== header.alg))) {
       throw new OAuthResourceServerError('invalid_token');
     }
-    verifyJwtSignature(header, matchingKid[0], Buffer.from(`${parts[0]}.${parts[1]}`), decodePart(parts[2]));
+    verifyJwtSignature(header, key, Buffer.from(`${parts[0]}.${parts[1]}`), decodePart(parts[2]));
     const active = await introspect(token, signal);
-    assertIntrospectionAgreement(active, claims);
+    if (legacyMode) {
+      if (active.sub !== undefined && active.sub !== claims.sub) throw new OAuthResourceServerError('invalid_token');
+    } else {
+      assertIntrospectionAgreement(active, claims);
+    }
     return claims;
   }
 
-  return Object.freeze({
+  const server = {
     metadata: createProtectedResourceMetadata({
       resource: canonicalResource,
       authorizationServers: [canonicalIssuer],
@@ -379,5 +465,59 @@ export function createOAuthResourceServer({
         throw failure;
       }
     },
-  });
+
+    async authorize({ authorization, operation, requestResource = canonicalResource, requestId, signal } = {}) {
+      if (!legacyMode) throw new TypeError('authorize is available only with legacy client callbacks.');
+      const requiredScope = HOSTED_MCP_OPERATION_SCOPES[operation];
+      if (!requiredScope) throw new TypeError('operation must be a Lucy MCP tool name.');
+      const correlationId = safeRequestId(requestId);
+      try {
+        const token = bearer(authorization);
+        const canonicalRequestResource = exactUrl(requestResource, 'requestResource', { allowInsecureLoopback });
+        if (legacy && sameSecret(token, legacy.token)) {
+          if (!legacy.resources.has(canonicalRequestResource)) throw new OAuthResourceServerError('invalid_token');
+          throw new OAuthResourceServerError('invalid_token');
+        }
+        if (canonicalRequestResource !== canonicalResource) throw new OAuthResourceServerError('invalid_token');
+        const claims = canonicalJwksUri ? await validateJwt(token, signal) : await introspect(token, signal);
+        const scopes = validateLegacyClaims(claims, {
+          issuer: canonicalIssuer,
+          audience: canonicalAudience,
+          resource: canonicalResource,
+          requiredScope,
+          now: Math.floor(now() / 1000),
+          clockToleranceSeconds,
+        });
+        const identity = validateIdentity(await resolveMembership(Object.freeze({
+          issuer: canonicalIssuer,
+          subject: claims.sub,
+        })), claims.sub);
+        const grantedScopes = Object.freeze(HOSTED_MCP_SUPPORTED_SCOPES.filter((scope) => scopes.has(scope)));
+        const client = await createHostedClient(Object.freeze({
+          subject: identity.subject,
+          workspaceId: identity.workspaceId,
+          scopes: grantedScopes,
+        }));
+        if (!(client instanceof AgentMemoryClient) || !Object.isFrozen(client)) {
+          throw new TypeError('createHostedClient must return a frozen AgentMemoryClient.');
+        }
+        return Object.freeze({ client, identity, scopes: grantedScopes });
+      } catch (error) {
+        const failure = error instanceof OAuthResourceServerError
+          ? error
+          : new OAuthResourceServerError('temporarily_unavailable', 503);
+        try {
+          logger(Object.freeze({
+            event: 'oauth_resource_server_failure',
+            reason: failure.code,
+            ...(correlationId === undefined ? {} : { request_id: correlationId }),
+          }));
+        } catch { /* observability cannot alter auth behavior */ }
+        throw failure;
+      }
+    },
+  };
+  if (legacyMode) delete server.authenticate;
+  else delete server.authorize;
+  return Object.freeze(server);
 }

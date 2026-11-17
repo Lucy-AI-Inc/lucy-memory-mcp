@@ -7,6 +7,7 @@ import {
   createProtectedResourceMetadata,
   requireHostedMcpScope,
 } from '../../src/mcp/resource-server.mjs';
+import { AgentMemoryClient } from '../../src/client/client.mjs';
 
 const RESOURCE = 'https://mcp-beta.example.test/mcp';
 const ISSUER = 'https://auth.example.test/';
@@ -57,6 +58,34 @@ function options(overrides = {}) {
       assert.equal(init.headers.authorization, 'Basic provider-resource-credential');
       return json({ active: true, sub: SUBJECT, workspace_id: WORKSPACE });
     },
+    ...overrides,
+  };
+}
+
+function legacyOptions(overrides = {}) {
+  return {
+    resource: RESOURCE,
+    issuer: ISSUER,
+    introspectionEndpoint: INTROSPECT,
+    now: () => NOW * 1000,
+    resolveMembership: async ({ subject }) => ({
+      userId: `user:${subject}`,
+      workspaceId: 'workspace:legacy',
+    }),
+    createHostedClient: async ({ scopes }) => new AgentMemoryClient({
+      token: 'upstream-agent-memory-token',
+      permissions: scopes,
+      transport: async () => { throw new Error('unused'); },
+    }),
+    fetchImpl: async () => json({
+      active: true,
+      iss: ISSUER,
+      sub: 'legacy-subject',
+      aud: RESOURCE,
+      resource: RESOURCE,
+      scope: 'memory:read memory:propose',
+      exp: NOW + 60,
+    }),
     ...overrides,
   };
 }
@@ -223,5 +252,41 @@ test('provider failures fail closed and logs contain no bearer or claims', async
 test('resource server requires both JWKS and fail-closed introspection configuration', () => {
   assert.throws(() => createOAuthResourceServer(options({ jwksUri: undefined })));
   assert.throws(() => createOAuthResourceServer(options({ introspectionEndpoint: undefined })));
+  assert.throws(() => createOAuthResourceServer(options({ introspectionAuthorization: undefined })));
   assert.throws(() => createOAuthResourceServer(options({ algorithms: ['HS256'] })));
+  assert.equal(createOAuthResourceServer(options()).authorize, undefined);
+});
+
+test('legacy consumers retain introspection-only construction, callbacks, and authorize()', async () => {
+  const server = createOAuthResourceServer(legacyOptions());
+  assert.equal(typeof server.authorize, 'function');
+  assert.equal(server.authenticate, undefined);
+  const authorization = await server.authorize({
+    authorization: 'Bearer opaque-legacy-token',
+    operation: 'memory_recall',
+  });
+  assert.deepEqual(authorization.identity, {
+    userId: 'user:legacy-subject',
+    workspaceId: 'workspace:legacy',
+    subject: 'legacy-subject',
+  });
+  assert.deepEqual(authorization.scopes, ['memory:read', 'memory:propose']);
+  assert(authorization.client instanceof AgentMemoryClient);
+});
+
+test('legacy static-bearer option remains isolated from OAuth resources and never authenticates', async () => {
+  assert.throws(() => createOAuthResourceServer(legacyOptions({
+    staticBearer: { token: 'legacy-token', resources: [RESOURCE] },
+  })), /must not include the OAuth resource/);
+  const server = createOAuthResourceServer(legacyOptions({
+    staticBearer: {
+      token: 'legacy-token',
+      resources: ['https://legacy-staging.example.test/mcp'],
+    },
+  }));
+  await failure(server.authorize({
+    authorization: 'Bearer legacy-token',
+    operation: 'memory_recall',
+    requestResource: 'https://legacy-staging.example.test/mcp',
+  }), 'invalid_token', 401);
 });

@@ -107,6 +107,7 @@ test('disposable Supabase staging excludes PRODUCT Edge Functions', (t) => {
   mkdirSync(join(source, 'templates'), { recursive: true });
   mkdirSync(join(source, 'functions', 'stripe-webhook'), { recursive: true });
   mkdirSync(join(source, 'functions', '_shared'), { recursive: true });
+  mkdirSync(join(directory, 'scripts', 'lib'), { recursive: true });
   writeFileSync(join(source, 'config.toml'), `${config}\n[functions.stripe-webhook]\nverify_jwt = false\n`);
   writeFileSync(join(source, 'seed.sql'), '-- disposable seed\n');
   writeFileSync(join(source, 'templates', 'confirmation.html'), 'confirm\n');
@@ -120,6 +121,13 @@ test('disposable Supabase staging excludes PRODUCT Edge Functions', (t) => {
     '',
   ].join('\n');
   writeFileSync(join(source, 'migrations', '20261016040000_luc898_manual_memory_storage.sql'), luc898Source);
+  writeFileSync(join(directory, 'scripts', 'lib', 'luc898_fixture_sql.py'), [
+    'from pathlib import Path',
+    'import sys',
+    'source, target = map(Path, sys.argv[1:])',
+    "target.write_bytes(source.read_bytes() + b'-- product-adapter-ran\\n')",
+    '',
+  ].join('\n'));
   writeFileSync(join(source, 'migrations', '20261116051300_hosted_mcp_admission.sql'), [
     'CREATE OR REPLACE FUNCTION public.acquire_hosted_mcp_admission() RETURNS void AS $$ BEGIN END; $$ LANGUAGE plpgsql;',
     'CREATE OR REPLACE FUNCTION public.release_hosted_mcp_admission() RETURNS void AS $$ BEGIN END; $$ LANGUAGE plpgsql;',
@@ -135,10 +143,7 @@ test('disposable Supabase staging excludes PRODUCT Edge Functions', (t) => {
   assert.equal(readFileSync(join(target, 'seed.sql'), 'utf8'), '-- disposable seed\n');
   assert.equal(readFileSync(join(target, 'templates', 'confirmation.html'), 'utf8'), 'confirm\n');
   const stagedLuc898 = readFileSync(join(target, 'migrations', '20261016040000_luc898_manual_memory_storage.sql'), 'utf8');
-  assert.match(stagedLuc898, /-- LUC898_BATCH_BOUNDARY\nDO \$hmcp_fresh_batches\$/);
-  assert.match(stagedLuc898, /pg_temp\.luc898_check_batch\(relation_name,cursor_key\)/);
-  assert.match(stagedLuc898, /pg_temp\.luc898_finish_relation\(relation_name\)/);
-  assert.match(stagedLuc898, /'memory_events'.*'lucy_tool_executions'/s);
+  assert.equal(stagedLuc898, `${luc898Source}-- product-adapter-ran\n`);
   assert.equal(readFileSync(join(source, 'migrations', '20261016040000_luc898_manual_memory_storage.sql'), 'utf8'), luc898Source);
 
   stageSupabaseProject(source, target, 'lucy-hmcp-e2e-012345abcdef', { oldSchema: true });
@@ -146,7 +151,7 @@ test('disposable Supabase staging excludes PRODUCT Edge Functions', (t) => {
   assert.equal(existsSync(join(target, 'migrations', '20261116051300_hosted_mcp_admission.sql')), false);
 });
 
-test('disposable Supabase staging refuses an unrecognized LUC-898 phase boundary', (t) => {
+test('disposable Supabase staging refuses LUC-898 without the PRODUCT fixture installer', (t) => {
   const directory = mkdtempSync(join(tmpdir(), 'hmcp-supabase-luc898-'));
   t.after(() => rmSync(directory, { recursive: true, force: true }));
   const source = join(directory, 'source');
@@ -157,7 +162,7 @@ test('disposable Supabase staging refuses an unrecognized LUC-898 phase boundary
     '-- LUC-898: forward-only manual governed-memory storage boundary.\nBEGIN;\nCOMMIT;\n');
   assert.throws(
     () => stageSupabaseProject(source, target, 'lucy-hmcp-e2e-012345abcdef'),
-    /PRODUCT LUC-898 migration phase boundary mismatch/,
+    /PRODUCT LUC-898 fixture installer is unavailable/,
   );
 });
 
