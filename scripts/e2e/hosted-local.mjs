@@ -52,6 +52,8 @@ const BINDING_CREDENTIAL = randomBytes(32).toString('base64url');
 const INTROSPECTION_AUTHORIZATION = `Basic ${randomBytes(32).toString('base64url')}`;
 const CONTROL_CREDENTIAL = randomBytes(32).toString('base64url');
 const OBSERVER_KEY = randomBytes(32).toString('base64url');
+// PRODUCT's atomic proposal RPC accepts only the encrypted v2 content envelope.
+const MEMORY_ENCRYPTION_KEY = randomBytes(32).toString('base64');
 const ALICE_PASSWORD = randomBytes(24).toString('base64url');
 const BOB_PASSWORD = randomBytes(24).toString('base64url');
 const MEMORY_MARKER = `hmcp-${randomBytes(12).toString('hex')}`;
@@ -92,6 +94,7 @@ const oldSchemaEvidence = {};
 const sensitiveValues = new Set([
   SERVICE_CREDENTIAL, UPSTREAM_SECRET, LOG_KEY, BINDING_CREDENTIAL,
   INTROSPECTION_AUTHORIZATION, CONTROL_CREDENTIAL, OBSERVER_KEY,
+  MEMORY_ENCRYPTION_KEY,
   ALICE_PASSWORD, BOB_PASSWORD, MEMORY_MARKER,
   'disposable local hosted MCP proof',
 ]);
@@ -363,6 +366,7 @@ function productEnvironment(status, enabled = true) {
     NEXT_PUBLIC_SUPABASE_ANON_KEY: status.anonKey,
     NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY: status.anonKey,
     NEXT_PUBLIC_API_BASE_URL: PRODUCT_URL,
+    LUCY_MEMORY_CONTENT_ENCRYPTION_KEY: MEMORY_ENCRYPTION_KEY,
     HOSTED_MCP_PRODUCT_ENABLED: enabled ? 'true' : 'false',
     HOSTED_MCP_SERVICE_CREDENTIAL_CURRENT: SERVICE_CREDENTIAL,
     HOSTED_MCP_UPSTREAM_SIGNING_SECRET_CURRENT: UPSTREAM_SECRET,

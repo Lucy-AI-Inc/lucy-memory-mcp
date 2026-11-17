@@ -53,6 +53,13 @@ test('evidence text redaction preserves untruncated diagnostics', () => {
   assert.equal(output.length > 2_000, true);
 });
 
+test('hosted PRODUCT gets one encrypted-memory key for proposal creation and later approval', () => {
+  const source = readFileSync(new URL('../../scripts/e2e/hosted-local.mjs', import.meta.url), 'utf8');
+  assert.match(source, /const MEMORY_ENCRYPTION_KEY = randomBytes\(32\)\.toString\('base64'\);/);
+  assert.match(source, /LUCY_MEMORY_CONTENT_ENCRYPTION_KEY: MEMORY_ENCRYPTION_KEY/);
+  assert.match(source, /sensitiveValues = new Set\(\[[\s\S]*MEMORY_ENCRYPTION_KEY,[\s\S]*\]\);/);
+});
+
 test('hosted admission migration is identified by its SQL authority, not its timestamp', (t) => {
   const directory = mkdtempSync(join(tmpdir(), 'hmcp-migrations-'));
   t.after(() => rmSync(directory, { recursive: true, force: true }));
