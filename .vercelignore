@@ -1,0 +1,25 @@
+# Runtime-irrelevant source and local artifacts
+.git/
+.github/
+.tmp/
+coverage/
+deploy/
+docs/
+fixtures/
+infra/
+tests/
+
+# TEST-ONLY OAuth authorization server and disposable Docker harness must never deploy
+scripts/e2e/
+scripts/private-beta-certify.mjs
+scripts/hosted-mcp-drill.mjs
+
+# Development and release tooling
+scripts/generate-hashes.mjs
+scripts/prepare-release-tarball.mjs
+scripts/scan-secrets.mjs
+scripts/validate-contract.mjs
+scripts/validate-schemas.mjs
+scripts/verify-release.mjs
+*.log
+*.tgz

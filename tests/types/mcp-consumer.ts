@@ -46,13 +46,12 @@ const metadata: ProtectedResourceMetadata = createProtectedResourceMetadata({
 const resourceServer = createOAuthResourceServer({
   resource: metadata.resource,
   issuer: metadata.authorization_servers[0],
+  jwksUri: 'https://auth.example.test/jwks',
   introspectionEndpoint: 'https://auth.example.test/introspect',
-  resolveMembership: async ({ subject }) => ({ userId: subject, workspaceId: 'workspace-1' }),
-  createHostedClient: async () => client,
+  introspectionAuthorization: 'Basic resource-server-credential',
 });
-void resourceServer.authorize({
+void resourceServer.authenticate({
   authorization: 'Bearer caller-token',
-  operation: 'memory_recall',
 });
 const hermesOptions: HermesLucyInstallOptions = {
   profilePath: '/tmp/lucy-profile',

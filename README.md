@@ -166,7 +166,7 @@ The low-level client accepts canonical JSON strings rather than caller-owned Jav
 
 ### Hosted OAuth resource server
 
-Hosted transports can publish `server.metadata` at their RFC 9728 protected-resource metadata endpoint and call `server.authorize` before dispatching a Lucy MCP tool:
+Hosted transports can publish `server.metadata` at their RFC 9728 protected-resource metadata endpoint and call `server.authenticate` before dispatching a Lucy MCP tool:
 
 ```js
 import { createOAuthResourceServer } from '@trylucy/agent-memory/mcp/resource-server';
@@ -177,13 +177,15 @@ const server = createOAuthResourceServer({
   jwksUri: 'https://auth.example.com/.well-known/jwks.json',
   introspectionEndpoint: 'https://auth.example.com/oauth/introspect',
   introspectionAuthorization: `Basic ${process.env.INTROSPECTION_CREDENTIAL}`,
-  resolveMembership: async ({ issuer, subject }) => lookupMembership({ issuer, subject }),
-  createHostedClient: async (authContext) =>
-    createHostedAgentMemoryClient({ authContext, exchangeUrl, serviceToken, transport }),
+});
+
+const authContext = await server.authenticate({
+  authorization: request.headers.get('authorization'),
+  requestId,
 });
 ```
 
-Omit `jwksUri` for opaque-token introspection. JWT validation requires introspection as a fail-closed revocation check. Membership must be resolved from the validated issuer and subject; bearer claims and MCP arguments are not workspace authority. `createHostedClient` receives only the validated subject, server-derived workspace, and granted memory scopes. Never pass the caller bearer or untrusted claims into it.
+Only RS256 and ES256 JWTs are accepted. JWKS signature validation and introspection are both mandatory, and any provider failure fails closed. The returned context contains only the validated subject, signed workspace ID, and supported memory scopes; it never contains the bearer. A hosted entry must verify active membership server-side before using that workspace and must never pass the caller bearer upstream.
 
 ## Security and privacy
 
