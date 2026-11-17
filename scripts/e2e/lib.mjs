@@ -65,6 +65,13 @@ function replaceTomlNumber(source, section, key, value) {
   return source.replace(pattern, `$1${value}`);
 }
 
+function rebaseSupabaseContentPaths(source) {
+  return source.replace(
+    /^(\s*content_path\s*=\s*")\.\/(?!supabase\/)([^"\r\n]+)("\s*(?:#.*)?)$/gm,
+    '$1./supabase/$2$3',
+  );
+}
+
 export function rewriteSupabaseConfig(source, projectId) {
   if (typeof source !== 'string' || !/^lucy-hmcp-e2e-[a-f0-9]{12}$/.test(projectId)) {
     throw new Error('invalid disposable Supabase project id');
@@ -78,6 +85,11 @@ export function rewriteSupabaseConfig(source, projectId) {
   output = output.replace(/^site_url\s*=\s*"[^"]+"/m, `site_url = "http://127.0.0.1:${E2E_PORTS.product}"`);
   output = output.replace(/^additional_redirect_urls\s*=.*$/m,
     `additional_redirect_urls = ["http://127.0.0.1:${E2E_PORTS.product}", "http://127.0.0.1:${E2E_PORTS.oauth}/callback"]`);
+  // The Supabase CLI resolves auth template content_path values from its
+  // --workdir, not from supabase/config.toml. The disposable harness stages
+  // the PRODUCT tree at <workdir>/supabase, so preserve those references by
+  // rebasing project-relative paths to that copied tree.
+  output = rebaseSupabaseContentPaths(output);
   if (!/^\[analytics\]/m.test(output)) {
     output += `\n[analytics]\nenabled = true\nport = ${E2E_PORTS.analytics}\nvector_port = ${E2E_PORTS.vector}\n`;
   }

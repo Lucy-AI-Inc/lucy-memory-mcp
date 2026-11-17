@@ -14,13 +14,16 @@ import {
   rewriteSupabaseConfig,
 } from '../../scripts/e2e/lib.mjs';
 
-const config = `project_id = "shared"\n[api]\nport = 54321\n[db]\nport = 54322\nshadow_port = 54320\n[studio]\nport = 54323\n[inbucket]\nport = 54324\n[auth]\nsite_url = "http://127.0.0.1:3000"\nadditional_redirect_urls = ["http://localhost:3000"]\n`;
+const config = `project_id = "shared"\n[api]\nport = 54321\n[db]\nport = 54322\nshadow_port = 54320\n[studio]\nport = 54323\n[inbucket]\nport = 54324\n[auth]\nsite_url = "http://127.0.0.1:3000"\nadditional_redirect_urls = ["http://localhost:3000"]\n[auth.email.template.confirmation]\ncontent_path = "./templates/confirmation.html"\n[auth.email.template.magic_link]\ncontent_path = "./templates/magic_link.html"\n`;
 
-test('disposable Supabase config uses only dedicated 56321-56329 ports', () => {
+test('disposable Supabase config rewrites owned ports and staged file paths', () => {
   const output = rewriteSupabaseConfig(config, 'lucy-hmcp-e2e-012345abcdef');
   assert.match(output, /project_id = "lucy-hmcp-e2e-012345abcdef"/);
   for (const port of Object.values(E2E_PORTS).filter((port) => port >= 56321)) assert.match(output, new RegExp(String(port)));
   assert.doesNotMatch(output, /5432[0-4]/);
+  assert.match(output, /content_path = "\.\/supabase\/templates\/confirmation\.html"/);
+  assert.match(output, /content_path = "\.\/supabase\/templates\/magic_link\.html"/);
+  assert.doesNotMatch(output, /content_path = "\.\/templates\//);
   assert.equal(isOwnedProjectId('lucy-hmcp-e2e-012345abcdef'), true);
   assert.equal(isOwnedProjectId('lucy-v0-frontend-fork-local'), false);
 });
