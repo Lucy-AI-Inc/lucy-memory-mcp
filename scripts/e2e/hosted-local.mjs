@@ -26,6 +26,7 @@ import {
   denverTimestamp,
   migrationAuthority,
   pkceChallenge,
+  redactEvidenceText,
   requireAbsoluteDirectory,
   sha256File,
   stageSupabaseProject,
@@ -68,6 +69,8 @@ const PRODUCT_LOG = join(EVIDENCE, 'logs/product.ndjson');
 const MCP_LOG = join(EVIDENCE, 'logs/mcp.ndjson');
 const OAUTH_LOG = join(EVIDENCE, 'logs/oauth.ndjson');
 const OBSERVER_LOG = join(EVIDENCE, 'logs/observer.ndjson');
+const SUPABASE_STDERR_LOG = join(EVIDENCE, 'logs/supabase.stderr.log');
+writeFileSync(SUPABASE_STDERR_LOG, '', { mode: 0o600 });
 
 const tempRoot = mkdtempSync(join(tmpdir(), 'lucy-hmcp-e2e-'));
 const PRODUCT_RAW_LOG = join(tempRoot, 'product.raw.log');
@@ -99,13 +102,7 @@ function rememberSensitive(value) {
 }
 
 function safeFailureDetail(error) {
-  let detail = String(error?.message ?? error).replace(/[\r\n]+/g, ' ');
-  for (const value of sensitiveValues) detail = detail.replaceAll(value, '[REDACTED]');
-  detail = detail
-    .replace(/lucy_xc1\.[A-Za-z0-9_-]+\.[A-Za-z0-9_-]+/g, '[REDACTED_UPSTREAM_CREDENTIAL]')
-    .replace(/(?:[A-Za-z0-9_-]+\.){2}[A-Za-z0-9_-]+/g, '[REDACTED_JWT]')
-    .replace(/Bearer\s+\S+/gi, 'Bearer [REDACTED]');
-  return detail.slice(0, 240);
+  return redactEvidenceText(error?.message ?? error, sensitiveValues).replace(/[\r\n]+/g, ' ').slice(0, 240);
 }
 
 function assertSafeEvidenceText(value) {
@@ -123,7 +120,9 @@ function commandName(name) {
   return process.platform === 'win32' ? `${name}.cmd` : name;
 }
 
-async function run(command, args, { cwd = ROOT, env = process.env, allowFailure = false } = {}) {
+async function run(command, args, {
+  cwd = ROOT, env = process.env, allowFailure = false, stderrLogPath,
+} = {}) {
   const child = spawn(command, args, { cwd, env, stdio: ['ignore', 'pipe', 'pipe'], windowsHide: true });
   let stdout = '';
   let stderr = '';
@@ -133,6 +132,12 @@ async function run(command, args, { cwd = ROOT, env = process.env, allowFailure 
     child.once('error', reject);
     child.once('close', resolveCode);
   });
+  if (stderrLogPath) {
+    const safeStderr = redactEvidenceText(stderr, sensitiveValues);
+    appendFileSync(stderrLogPath,
+      `== ${basename(command)} ${args.join(' ')} ==\n${safeStderr}${safeStderr.endsWith('\n') || !safeStderr ? '' : '\n'}`,
+      { mode: 0o600 });
+  }
   if (code !== 0 && !allowFailure) throw new Error(`${basename(command)} failed (${code}): ${stderr.slice(-1000)}`);
   return { code, stdout, stderr };
 }
@@ -200,7 +205,7 @@ function supabaseArgs(...args) {
 }
 
 async function supabase(...args) {
-  return run(commandName('npx'), supabaseArgs(...args), { cwd: tempRoot });
+  return run(commandName('npx'), supabaseArgs(...args), { cwd: tempRoot, stderrLogPath: SUPABASE_STDERR_LOG });
 }
 
 function stageSupabase({ oldSchema = false } = {}) {

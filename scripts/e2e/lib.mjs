@@ -59,6 +59,17 @@ export const E2E_GATE_IDS = Object.freeze({
   old_schema: ['LUC-1078', 'LUC-1077'],
 });
 
+const LUC898_MIGRATION = '20261016040000_luc898_manual_memory_storage.sql';
+const LUC898_HEADER = '-- LUC-898: forward-only manual governed-memory storage boundary.';
+const LUC898_BATCH_BOUNDARY = '-- LUC898_BATCH_BOUNDARY\n';
+const LUC898_RELATIONS = Object.freeze([
+  'memory_events', 'active_memories', 'proposal_events', 'active_proposals',
+  'governed_memory_retrieval_index', 'run_events', 'trace_events',
+  'conversation_events', 'conversation_threads', 'conversation_summaries',
+  'billing_settlement_intents', 'lucy_jobs', 'lucy_tool_results',
+  'lucy_tool_executions',
+]);
+
 export function requireAbsoluteDirectory(value, name) {
   if (typeof value !== 'string' || !isAbsolute(value) || value.includes('\0')) {
     throw new Error(`${name} must be an absolute path`);
@@ -124,6 +135,24 @@ function stripSupabaseFunctionSections(source) {
   return output.join(newline);
 }
 
+function prepareFreshLuc898Migration(source) {
+  if (source.split(LUC898_HEADER).length !== 2
+    || source.split(LUC898_BATCH_BOUNDARY).length !== 2) {
+    throw new Error('PRODUCT LUC-898 migration phase boundary mismatch');
+  }
+  const relations = LUC898_RELATIONS.map((name) => `'${name}'`).join(',');
+  const batches = `DO $hmcp_fresh_batches$ DECLARE relation_name text; n integer; cursor_key jsonb;
+  BEGIN FOREACH relation_name IN ARRAY ARRAY[${relations}] LOOP
+    cursor_key := NULL;
+    LOOP SELECT checked_count,last_key INTO n,cursor_key
+      FROM pg_temp.luc898_check_batch(relation_name,cursor_key);
+      EXIT WHEN n < 16;
+    END LOOP;
+    PERFORM pg_temp.luc898_finish_relation(relation_name);
+  END LOOP; END $hmcp_fresh_batches$;\n`;
+  return source.replace(LUC898_BATCH_BOUNDARY, LUC898_BATCH_BOUNDARY + batches);
+}
+
 export function rewriteSupabaseConfig(source, projectId) {
   if (typeof source !== 'string' || !/^lucy-hmcp-e2e-[a-f0-9]{12}$/.test(projectId)) {
     throw new Error('invalid disposable Supabase project id');
@@ -182,6 +211,13 @@ export function stageSupabaseProject(source, target, projectId, { oldSchema = fa
   if (existsSync(targetRoot)) rmSync(targetRoot, { recursive: true, force: true });
   mkdirSync(targetRoot, { recursive: true });
   cpSync(migrationsPath, resolve(targetRoot, 'migrations'), { recursive: true });
+  const luc898Path = resolve(targetRoot, 'migrations', LUC898_MIGRATION);
+  if (existsSync(luc898Path)) {
+    // PRODUCT's migration requires its bounded installer phase even on a fresh
+    // database. Drive every empty/synthetic relation before its final guards;
+    // an unexpected unsafe row still fails against the empty operator manifest.
+    writeFileSync(luc898Path, prepareFreshLuc898Migration(readFileSync(luc898Path, 'utf8')), { mode: 0o600 });
+  }
   // Copy only the assets used by this proof. PRODUCT Edge Function sources can
   // import application files outside supabase/, and staging them would let a
   // future CLI behavior change rediscover and bundle those entrypoints.
@@ -234,6 +270,18 @@ export function assertSanitizedEvidence(value, path = '$') {
     }
   }
   return value;
+}
+
+export function redactEvidenceText(value, sensitiveValues = []) {
+  let output = String(value);
+  for (const secret of sensitiveValues) {
+    if (typeof secret === 'string' && secret) output = output.replaceAll(secret, '[REDACTED]');
+  }
+  return output
+    .replace(/lucy_xc1\.[A-Za-z0-9_-]+\.[A-Za-z0-9_-]+/g, '[REDACTED_UPSTREAM_CREDENTIAL]')
+    .replace(/(?:[A-Za-z0-9_-]{8,}\.){2}[A-Za-z0-9_-]{8,}/g, '[REDACTED_JWT]')
+    .replace(/Bearer\s+\S+/gi, 'Bearer [REDACTED]')
+    .replace(/(\b(?:postgres(?:ql)?|https?):\/\/[^:\s/]+:)[^@\s/]+@/gi, '$1[REDACTED]@');
 }
 
 export function pkceChallenge(verifier) {

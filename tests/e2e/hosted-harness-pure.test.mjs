@@ -11,6 +11,7 @@ import {
   isOwnedProjectId,
   migrationAuthority,
   pkceChallenge,
+  redactEvidenceText,
   rewriteSupabaseConfig,
   stageSupabaseProject,
 } from '../../scripts/e2e/lib.mjs';
@@ -41,6 +42,15 @@ test('disposable Supabase config overrides an enabled edge runtime', () => {
 
 test('PKCE S256 matches the RFC 7636 example', () => {
   assert.equal(pkceChallenge('dBjftJeZ4CVP-mB92K27uhbUJU1p1r_wW1gFWFOEjXk'), 'E9Melhoa2OwvFrEMTJguCHaoeK1t8URWbuGJSstw-cM');
+});
+
+test('evidence text redaction preserves untruncated diagnostics', () => {
+  const tail = 'x'.repeat(2_000);
+  const output = redactEvidenceText(`Bearer abc.def.ghi\npostgresql://postgres:secret@127.0.0.1/db\n${tail}`);
+  assert.match(output, /^Bearer \[REDACTED\]\npostgresql:\/\/postgres:\[REDACTED\]@127\.0\.0\.1\/db\n/);
+  assert.equal(output.endsWith(tail), true);
+  assert.equal(output.includes('secret'), false);
+  assert.equal(output.length > 2_000, true);
 });
 
 test('hosted admission migration is identified by its SQL authority, not its timestamp', (t) => {
@@ -74,6 +84,14 @@ test('disposable Supabase staging excludes PRODUCT Edge Functions', (t) => {
   writeFileSync(join(source, 'templates', 'confirmation.html'), 'confirm\n');
   writeFileSync(join(source, 'functions', 'stripe-webhook', 'index.ts'), "import '../_shared/runtime.ts';\n");
   writeFileSync(join(source, 'functions', '_shared', 'runtime.ts'), 'export {};\n');
+  const luc898Source = [
+    '-- LUC-898: forward-only manual governed-memory storage boundary.',
+    'BEGIN;',
+    '-- LUC898_BATCH_BOUNDARY',
+    'COMMIT;',
+    '',
+  ].join('\n');
+  writeFileSync(join(source, 'migrations', '20261016040000_luc898_manual_memory_storage.sql'), luc898Source);
   writeFileSync(join(source, 'migrations', '20261116051300_hosted_mcp_admission.sql'), [
     'CREATE OR REPLACE FUNCTION public.acquire_hosted_mcp_admission() RETURNS void AS $$ BEGIN END; $$ LANGUAGE plpgsql;',
     'CREATE OR REPLACE FUNCTION public.release_hosted_mcp_admission() RETURNS void AS $$ BEGIN END; $$ LANGUAGE plpgsql;',
@@ -88,10 +106,31 @@ test('disposable Supabase staging excludes PRODUCT Edge Functions', (t) => {
   assert.equal(existsSync(join(target, 'functions')), false);
   assert.equal(readFileSync(join(target, 'seed.sql'), 'utf8'), '-- disposable seed\n');
   assert.equal(readFileSync(join(target, 'templates', 'confirmation.html'), 'utf8'), 'confirm\n');
+  const stagedLuc898 = readFileSync(join(target, 'migrations', '20261016040000_luc898_manual_memory_storage.sql'), 'utf8');
+  assert.match(stagedLuc898, /-- LUC898_BATCH_BOUNDARY\nDO \$hmcp_fresh_batches\$/);
+  assert.match(stagedLuc898, /pg_temp\.luc898_check_batch\(relation_name,cursor_key\)/);
+  assert.match(stagedLuc898, /pg_temp\.luc898_finish_relation\(relation_name\)/);
+  assert.match(stagedLuc898, /'memory_events'.*'lucy_tool_executions'/s);
+  assert.equal(readFileSync(join(source, 'migrations', '20261016040000_luc898_manual_memory_storage.sql'), 'utf8'), luc898Source);
 
   stageSupabaseProject(source, target, 'lucy-hmcp-e2e-012345abcdef', { oldSchema: true });
   assert.equal(existsSync(join(target, 'functions')), false);
   assert.equal(existsSync(join(target, 'migrations', '20261116051300_hosted_mcp_admission.sql')), false);
+});
+
+test('disposable Supabase staging refuses an unrecognized LUC-898 phase boundary', (t) => {
+  const directory = mkdtempSync(join(tmpdir(), 'hmcp-supabase-luc898-'));
+  t.after(() => rmSync(directory, { recursive: true, force: true }));
+  const source = join(directory, 'source');
+  const target = join(directory, 'target');
+  mkdirSync(join(source, 'migrations'), { recursive: true });
+  writeFileSync(join(source, 'config.toml'), config);
+  writeFileSync(join(source, 'migrations', '20261016040000_luc898_manual_memory_storage.sql'),
+    '-- LUC-898: forward-only manual governed-memory storage boundary.\nBEGIN;\nCOMMIT;\n');
+  assert.throws(
+    () => stageSupabaseProject(source, target, 'lucy-hmcp-e2e-012345abcdef'),
+    /PRODUCT LUC-898 migration phase boundary mismatch/,
+  );
 });
 
 test('evidence sanitizer rejects secret-bearing keys and case inventory is complete', () => {
