@@ -1,6 +1,14 @@
 import { createHash } from 'node:crypto';
-import { readFileSync } from 'node:fs';
-import { isAbsolute, resolve } from 'node:path';
+import {
+  cpSync,
+  existsSync,
+  mkdirSync,
+  readFileSync,
+  readdirSync,
+  rmSync,
+  writeFileSync,
+} from 'node:fs';
+import { isAbsolute, relative, resolve } from 'node:path';
 
 export const E2E_PORTS = Object.freeze({
   api: 56321,
@@ -97,6 +105,45 @@ export function rewriteSupabaseConfig(source, projectId) {
     output += `\n[db.pooler]\nenabled = false\nport = ${E2E_PORTS.pooler}\npool_mode = "transaction"\ndefault_pool_size = 15\nmax_client_conn = 100\n`;
   }
   return output;
+}
+
+function isContainedPath(parent, child) {
+  const path = relative(parent, child);
+  return path !== '' && !path.startsWith('..') && !isAbsolute(path);
+}
+
+export function stageSupabaseProject(source, target, projectId, { oldSchema = false } = {}) {
+  const sourceRoot = resolve(source);
+  const targetRoot = resolve(target);
+  if (sourceRoot === targetRoot
+    || isContainedPath(sourceRoot, targetRoot)
+    || isContainedPath(targetRoot, sourceRoot)) {
+    throw new Error('Supabase staging source and target must be separate trees');
+  }
+
+  const configPath = resolve(sourceRoot, 'config.toml');
+  const migrationsPath = resolve(sourceRoot, 'migrations');
+  if (!existsSync(configPath) || !existsSync(migrationsPath)) {
+    throw new Error('PRODUCT Supabase source is incomplete');
+  }
+  const config = rewriteSupabaseConfig(readFileSync(configPath, 'utf8'), projectId);
+
+  if (existsSync(targetRoot)) rmSync(targetRoot, { recursive: true, force: true });
+  mkdirSync(targetRoot, { recursive: true });
+  cpSync(migrationsPath, resolve(targetRoot, 'migrations'), { recursive: true });
+  // Supabase start resolves configured Edge Function entrypoints even though
+  // this proof never invokes them. Carry the complete functions tree so its
+  // shared imports remain intact, alongside the seed and auth templates.
+  for (const name of ['seed.sql', 'templates', 'functions']) {
+    const from = resolve(sourceRoot, name);
+    if (existsSync(from)) cpSync(from, resolve(targetRoot, name), { recursive: true });
+  }
+  writeFileSync(resolve(targetRoot, 'config.toml'), config, { mode: 0o600 });
+
+  const migrationFiles = readdirSync(resolve(targetRoot, 'migrations'))
+    .filter((name) => name.endsWith('.sql')).map((name) => resolve(targetRoot, 'migrations', name));
+  const admissionMigration = migrationAuthority(migrationFiles);
+  if (oldSchema) rmSync(admissionMigration);
 }
 
 export function migrationAuthority(files) {

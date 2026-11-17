@@ -1,5 +1,5 @@
 import assert from 'node:assert/strict';
-import { mkdtempSync, rmSync, writeFileSync } from 'node:fs';
+import { existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { basename, join } from 'node:path';
 import test from 'node:test';
@@ -12,6 +12,7 @@ import {
   migrationAuthority,
   pkceChallenge,
   rewriteSupabaseConfig,
+  stageSupabaseProject,
 } from '../../scripts/e2e/lib.mjs';
 
 const config = `project_id = "shared"\n[api]\nport = 54321\n[db]\nport = 54322\nshadow_port = 54320\n[studio]\nport = 54323\n[inbucket]\nport = 54324\n[auth]\nsite_url = "http://127.0.0.1:3000"\nadditional_redirect_urls = ["http://localhost:3000"]\n[auth.email.template.confirmation]\ncontent_path = "./templates/confirmation.html"\n[auth.email.template.magic_link]\ncontent_path = "./templates/magic_link.html"\n`;
@@ -36,7 +37,7 @@ test('hosted admission migration is identified by its SQL authority, not its tim
   const directory = mkdtempSync(join(tmpdir(), 'hmcp-migrations-'));
   t.after(() => rmSync(directory, { recursive: true, force: true }));
   const ordinary = join(directory, '20000101000000_ordinary.sql');
-  const admission = join(directory, '20261116070100_hosted_mcp_admission.sql');
+  const admission = join(directory, '20261116051300_hosted_mcp_admission.sql');
   writeFileSync(ordinary, 'CREATE TABLE public.ordinary (id integer);\n');
   writeFileSync(admission, [
     'CREATE OR REPLACE FUNCTION public.acquire_hosted_mcp_admission() RETURNS void AS $$ BEGIN END; $$ LANGUAGE plpgsql;',
@@ -47,6 +48,38 @@ test('hosted admission migration is identified by its SQL authority, not its tim
   assert.equal(basename(migrationAuthority([ordinary, admission])), basename(admission));
   assert.throws(() => migrationAuthority([ordinary]), /expected exactly one hosted admission migration, found 0/);
   assert.throws(() => migrationAuthority([admission, admission]), /expected exactly one hosted admission migration, found 2/);
+});
+
+test('disposable Supabase staging includes configured Edge Functions and shared imports', (t) => {
+  const directory = mkdtempSync(join(tmpdir(), 'hmcp-supabase-stage-'));
+  t.after(() => rmSync(directory, { recursive: true, force: true }));
+  const source = join(directory, 'product-supabase');
+  const target = join(directory, 'owned-workdir', 'supabase');
+  mkdirSync(join(source, 'migrations'), { recursive: true });
+  mkdirSync(join(source, 'templates'), { recursive: true });
+  mkdirSync(join(source, 'functions', 'stripe-webhook'), { recursive: true });
+  mkdirSync(join(source, 'functions', '_shared'), { recursive: true });
+  writeFileSync(join(source, 'config.toml'), `${config}\n[functions.stripe-webhook]\nverify_jwt = false\n`);
+  writeFileSync(join(source, 'seed.sql'), '-- disposable seed\n');
+  writeFileSync(join(source, 'templates', 'confirmation.html'), 'confirm\n');
+  writeFileSync(join(source, 'functions', 'stripe-webhook', 'index.ts'), "import '../_shared/runtime.ts';\n");
+  writeFileSync(join(source, 'functions', '_shared', 'runtime.ts'), 'export {};\n');
+  writeFileSync(join(source, 'migrations', '20261116051300_hosted_mcp_admission.sql'), [
+    'CREATE OR REPLACE FUNCTION public.acquire_hosted_mcp_admission() RETURNS void AS $$ BEGIN END; $$ LANGUAGE plpgsql;',
+    'CREATE OR REPLACE FUNCTION public.release_hosted_mcp_admission() RETURNS void AS $$ BEGIN END; $$ LANGUAGE plpgsql;',
+    '',
+  ].join('\n'));
+
+  stageSupabaseProject(source, target, 'lucy-hmcp-e2e-012345abcdef');
+
+  assert.equal(readFileSync(join(target, 'functions', 'stripe-webhook', 'index.ts'), 'utf8'), "import '../_shared/runtime.ts';\n");
+  assert.equal(readFileSync(join(target, 'functions', '_shared', 'runtime.ts'), 'utf8'), 'export {};\n');
+  assert.equal(readFileSync(join(target, 'seed.sql'), 'utf8'), '-- disposable seed\n');
+  assert.equal(readFileSync(join(target, 'templates', 'confirmation.html'), 'utf8'), 'confirm\n');
+
+  stageSupabaseProject(source, target, 'lucy-hmcp-e2e-012345abcdef', { oldSchema: true });
+  assert.equal(readFileSync(join(target, 'functions', 'stripe-webhook', 'index.ts'), 'utf8'), "import '../_shared/runtime.ts';\n");
+  assert.equal(existsSync(join(target, 'migrations', '20261116051300_hosted_mcp_admission.sql')), false);
 });
 
 test('evidence sanitizer rejects secret-bearing keys and case inventory is complete', () => {

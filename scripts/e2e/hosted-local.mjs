@@ -5,7 +5,6 @@ import { spawn } from 'node:child_process';
 import { randomBytes, randomUUID } from 'node:crypto';
 import {
   appendFileSync,
-  cpSync,
   createWriteStream,
   existsSync,
   mkdirSync,
@@ -28,8 +27,8 @@ import {
   migrationAuthority,
   pkceChallenge,
   requireAbsoluteDirectory,
-  rewriteSupabaseConfig,
   sha256File,
+  stageSupabaseProject,
 } from './lib.mjs';
 
 process.env.HMCP_E2E_DISPOSABLE = '1';
@@ -207,19 +206,7 @@ async function supabase(...args) {
 function stageSupabase({ oldSchema = false } = {}) {
   const source = resolve(PRODUCT, 'supabase');
   const target = resolve(tempRoot, 'supabase');
-  if (existsSync(target)) rmSync(target, { recursive: true, force: true });
-  mkdirSync(target, { recursive: true });
-  cpSync(resolve(source, 'migrations'), resolve(target, 'migrations'), { recursive: true });
-  for (const name of ['seed.sql', 'templates']) {
-    const from = resolve(source, name);
-    if (existsSync(from)) cpSync(from, resolve(target, name), { recursive: true });
-  }
-  const config = rewriteSupabaseConfig(readFileSync(resolve(source, 'config.toml'), 'utf8'), projectId);
-  writeFileSync(resolve(target, 'config.toml'), config, { mode: 0o600 });
-  const migrationFiles = readdirSync(resolve(target, 'migrations'))
-    .filter((name) => name.endsWith('.sql')).map((name) => resolve(target, 'migrations', name));
-  const migration = migrationAuthority(migrationFiles);
-  if (oldSchema) rmSync(migration);
+  stageSupabaseProject(source, target, projectId, { oldSchema });
 }
 
 function parseStatus(raw) {
