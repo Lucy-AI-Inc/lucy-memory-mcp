@@ -46,11 +46,28 @@ const metadata: ProtectedResourceMetadata = createProtectedResourceMetadata({
 const resourceServer = createOAuthResourceServer({
   resource: metadata.resource,
   issuer: metadata.authorization_servers[0],
+  jwksUri: 'https://auth.example.test/jwks',
   introspectionEndpoint: 'https://auth.example.test/introspect',
-  resolveMembership: async ({ subject }) => ({ userId: subject, workspaceId: 'workspace-1' }),
-  createHostedClient: async () => client,
+  introspectionAuthorization: 'Basic resource-server-credential',
 });
-void resourceServer.authorize({
+void resourceServer.authenticate({
+  authorization: 'Bearer caller-token',
+});
+const legacyResourceServer = createOAuthResourceServer({
+  resource: metadata.resource,
+  issuer: metadata.authorization_servers[0],
+  introspectionEndpoint: 'https://auth.example.test/introspect',
+  resolveMembership: async ({ subject }) => ({
+    userId: subject,
+    workspaceId: 'workspace_legacy',
+  }),
+  createHostedClient: async () => client,
+  staticBearer: {
+    token: 'legacy-staging-token',
+    resources: ['https://legacy-staging.example.test/mcp'],
+  },
+});
+void legacyResourceServer.authorize({
   authorization: 'Bearer caller-token',
   operation: 'memory_recall',
 });

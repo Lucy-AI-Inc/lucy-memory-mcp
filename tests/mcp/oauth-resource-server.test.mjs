@@ -5,6 +5,7 @@ import {
   OAuthResourceServerError,
   createOAuthResourceServer,
   createProtectedResourceMetadata,
+  requireHostedMcpScope,
 } from '../../src/mcp/resource-server.mjs';
 import { AgentMemoryClient } from '../../src/client/client.mjs';
 
@@ -13,29 +14,34 @@ const ISSUER = 'https://auth.example.test/';
 const JWKS = 'https://auth.example.test/jwks';
 const INTROSPECT = 'https://auth.example.test/introspect';
 const NOW = 1_800_000_000;
-const CALLER_TOKEN = 'caller-secret-token';
-const UPSTREAM_TOKEN = 'upstream-agent-memory-token';
-const { privateKey, publicKey } = generateKeyPairSync('rsa', { modulusLength: 2048 });
-const publicJwk = publicKey.export({ format: 'jwk' });
-const jwk = { ...publicJwk, kid: 'key-1', alg: 'RS256', use: 'sig' };
+const SUBJECT = '11111111-1111-1111-1111-111111111111';
+const WORKSPACE = '22222222-2222-2222-2222-222222222222';
+const { privateKey: rsaPrivate, publicKey: rsaPublic } = generateKeyPairSync('rsa', { modulusLength: 2048 });
+const { privateKey: ecPrivate, publicKey: ecPublic } = generateKeyPairSync('ec', { namedCurve: 'prime256v1' });
+const rsaJwk = { ...rsaPublic.export({ format: 'jwk' }), kid: 'rsa-1', alg: 'RS256', use: 'sig' };
+const ecJwk = { ...ecPublic.export({ format: 'jwk' }), kid: 'ec-1', alg: 'ES256', use: 'sig', key_ops: ['verify'] };
 
-function token(claims = {}, signingKey = privateKey, header = {}) {
-  const encodedHeader = Buffer.from(JSON.stringify({ alg: 'RS256', kid: 'key-1', typ: 'at+jwt', ...header })).toString('base64url');
+function jwt(claims = {}, { algorithm = 'RS256', key = rsaPrivate, kid = 'rsa-1' } = {}) {
+  const encodedHeader = Buffer.from(JSON.stringify({ alg: algorithm, kid, typ: 'at+jwt' })).toString('base64url');
   const encodedClaims = Buffer.from(JSON.stringify({
     iss: ISSUER,
-    sub: 'subject-1',
+    sub: SUBJECT,
+    workspace_id: WORKSPACE,
     aud: RESOURCE,
     resource: RESOURCE,
     scope: 'memory:read memory:propose',
     exp: NOW + 300,
     ...claims,
   })).toString('base64url');
-  const signature = sign('RSA-SHA256', Buffer.from(`${encodedHeader}.${encodedClaims}`), signingKey).toString('base64url');
-  return `${encodedHeader}.${encodedClaims}.${signature}`;
+  const input = Buffer.from(`${encodedHeader}.${encodedClaims}`);
+  const signature = algorithm === 'ES256'
+    ? sign('SHA256', input, { key, dsaEncoding: 'ieee-p1363' })
+    : sign('RSA-SHA256', input, key);
+  return `${encodedHeader}.${encodedClaims}.${signature.toString('base64url')}`;
 }
 
-function response(body, status = 200) {
-  return { status, json: async () => body };
+function json(body, status = 200) {
+  return new Response(JSON.stringify(body), { status, headers: { 'content-type': 'application/json' } });
 }
 
 function options(overrides = {}) {
@@ -44,44 +50,57 @@ function options(overrides = {}) {
     issuer: ISSUER,
     jwksUri: JWKS,
     introspectionEndpoint: INTROSPECT,
-    introspectionAuthorization: 'Basic server-credential',
+    introspectionAuthorization: 'Basic provider-resource-credential',
     now: () => NOW * 1000,
-    resolveMembership: async ({ subject }) => ({
-      userId: `user:${subject}`,
-      workspaceId: 'workspace:authoritative',
-    }),
-    createHostedClient: async () => new AgentMemoryClient({
-      token: UPSTREAM_TOKEN,
-      permissions: ['memory:read', 'memory:propose'],
-      transport: async () => { throw new Error('unused'); },
-    }),
     fetchImpl: async (url, init) => {
-      if (url === JWKS) return response({ keys: [jwk] });
-      assert.equal(init.headers.authorization, 'Basic server-credential');
-      return response({ active: true, sub: 'subject-1' });
+      if (url === JWKS) return json({ keys: [rsaJwk, ecJwk] });
+      assert.equal(url, INTROSPECT);
+      assert.equal(init.headers.authorization, 'Basic provider-resource-credential');
+      return json({ active: true, sub: SUBJECT, workspace_id: WORKSPACE });
     },
     ...overrides,
   };
 }
 
-async function failure(promise, code, status) {
+function legacyOptions(overrides = {}) {
+  return {
+    resource: RESOURCE,
+    issuer: ISSUER,
+    introspectionEndpoint: INTROSPECT,
+    now: () => NOW * 1000,
+    resolveMembership: async ({ subject }) => ({
+      userId: `user:${subject}`,
+      workspaceId: 'workspace:legacy',
+    }),
+    createHostedClient: async ({ scopes }) => new AgentMemoryClient({
+      token: 'upstream-agent-memory-token',
+      permissions: scopes,
+      transport: async () => { throw new Error('unused'); },
+    }),
+    fetchImpl: async () => json({
+      active: true,
+      iss: ISSUER,
+      sub: 'legacy-subject',
+      aud: RESOURCE,
+      resource: RESOURCE,
+      scope: 'memory:read memory:propose',
+      exp: NOW + 60,
+    }),
+    ...overrides,
+  };
+}
+
+async function failure(promise, code, status, missing = false) {
   await assert.rejects(promise, (error) => {
     assert(error instanceof OAuthResourceServerError);
     assert.equal(error.code, code);
     assert.equal(error.status, status);
-    assert.deepEqual(error.toJSON(), {
-      error: code,
-      error_description: code === 'insufficient_scope'
-        ? 'The access token lacks the required scope.'
-        : code === 'temporarily_unavailable'
-          ? 'Token validation is temporarily unavailable.'
-          : 'The access token is invalid.',
-    });
+    assert.equal(error.missing, missing);
     return true;
   });
 }
 
-test('publishes RFC 9728 protected-resource metadata', () => {
+test('publishes the exact RFC 9728 protected-resource metadata document', () => {
   assert.deepEqual(createProtectedResourceMetadata({
     resource: RESOURCE,
     authorizationServers: [ISSUER],
@@ -93,143 +112,173 @@ test('publishes RFC 9728 protected-resource metadata', () => {
   });
 });
 
-test('JWT/JWKS validation derives identity and never forwards caller Authorization upstream', async () => {
-  const outbound = [];
-  const membershipInputs = [];
-  const hostedContexts = [];
-  const callerToken = token({ workspace_id: 'workspace:attacker' });
-  const server = createOAuthResourceServer(options({
-    resolveMembership: async (claims) => {
-      membershipInputs.push(claims);
-      return { userId: 'user:server', workspaceId: 'workspace:server' };
-    },
-    createHostedClient: async (authContext) => {
-      hostedContexts.push(authContext);
-      return new AgentMemoryClient({
-        token: UPSTREAM_TOKEN,
-        permissions: authContext.scopes,
-        transport: async (request) => {
-          outbound.push(request);
-          return {
-            status: 200,
-            body: {
-              schema_version: '1',
-              request_id: 'req_aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa',
-              as_of: '2027-01-15T08:00:00.000Z',
-              consistency: 'canonical_active',
-              scope: { kind: 'user' },
-              results: [],
-              notices: [],
-            },
-            byteLength: 200,
-          };
-        },
-      });
-    },
-  }));
-  const authorization = await server.authorize({
-    authorization: `Bearer ${callerToken}`,
-    operation: 'memory_recall',
-    requestId: 'req_safe-1',
-  });
-  assert.deepEqual(authorization.identity, {
-    userId: 'user:server',
-    workspaceId: 'workspace:server',
-    subject: 'subject-1',
-  });
-  assert.deepEqual(membershipInputs, [{ issuer: ISSUER, subject: 'subject-1' }]);
-  assert.deepEqual(hostedContexts, [{
-    subject: 'subject-1',
-    workspaceId: 'workspace:server',
-    scopes: ['memory:read', 'memory:propose'],
-  }]);
-  assert(!JSON.stringify(hostedContexts).includes(callerToken));
-  await authorization.client.recall(JSON.stringify({ query: 'name', scope: { kind: 'user' } }));
-  assert.equal(outbound.length, 1);
-  assert.equal(outbound[0].accessToken, UPSTREAM_TOKEN);
-  assert(!JSON.stringify(outbound).includes(callerToken));
-});
-
-test('introspection-only validation accepts an active scoped token', async () => {
+test('RS256 validation returns only the signed bearer-free subject/workspace/scopes', async () => {
   const calls = [];
+  const token = jwt();
   const server = createOAuthResourceServer(options({
-    jwksUri: undefined,
     fetchImpl: async (url, init) => {
       calls.push({ url, init });
-      return response({
-        active: true,
-        iss: ISSUER,
-        sub: 'subject-1',
-        aud: RESOURCE,
-        resource: RESOURCE,
-        scope: 'memory:read',
-        exp: NOW + 60,
-      });
+      return url === JWKS
+        ? json({ keys: [rsaJwk] })
+        : json({
+          active: true,
+          iss: ISSUER,
+          sub: SUBJECT,
+          workspace_id: WORKSPACE,
+          aud: RESOURCE,
+          resource: RESOURCE,
+          scope: ['memory:read', 'memory:propose'],
+        });
     },
   }));
-  const authorization = await server.authorize({
-    authorization: `Bearer ${CALLER_TOKEN}`,
-    operation: 'memory_recall',
+  const context = await server.authenticate({ authorization: `Bearer ${token}`, requestId: 'req_safe-1' });
+  assert.deepEqual(context, {
+    subject: SUBJECT,
+    workspaceId: WORKSPACE,
+    scopes: ['memory:read', 'memory:propose'],
   });
-  assert.equal(authorization.identity.workspaceId, 'workspace:authoritative');
-  assert.equal(calls[0].url, INTROSPECT);
-  assert.equal(new URLSearchParams(calls[0].init.body).get('token'), CALLER_TOKEN);
+  assert.deepEqual(Object.keys(context).sort(), ['scopes', 'subject', 'workspaceId']);
+  assert.equal(calls.length, 2);
+  assert.equal(new URLSearchParams(calls[1].init.body).get('token'), token);
+  assert.equal(JSON.stringify(context).includes(token), false);
 });
 
-test('rejects signature, issuer, audience, resource, time, scope, and revocation failures', async () => {
+test('root issuer identity is preserved exactly without adding a trailing slash', async () => {
+  const issuer = 'https://auth.example.test';
+  const server = createOAuthResourceServer(options({ issuer }));
+  assert.deepEqual(server.metadata.authorization_servers, [issuer]);
+  assert.equal((await server.authenticate({
+    authorization: `Bearer ${jwt({ iss: issuer })}`,
+  })).workspaceId, WORKSPACE);
+  await failure(server.authenticate({
+    authorization: `Bearer ${jwt({ iss: `${issuer}/` })}`,
+  }), 'invalid_token', 401);
+});
+
+test('ES256 accepts the JOSE 64-byte P1363 signature form', async () => {
+  const context = await createOAuthResourceServer(options()).authenticate({
+    authorization: `Bearer ${jwt({}, { algorithm: 'ES256', key: ecPrivate, kid: 'ec-1' })}`,
+  });
+  assert.equal(context.workspaceId, WORKSPACE);
+});
+
+test('scope enforcement is per tool and never narrows tools/list advertisement', async () => {
+  const context = await createOAuthResourceServer(options()).authenticate({
+    authorization: `Bearer ${jwt({ scope: 'memory:read' })}`,
+  });
+  assert.equal(requireHostedMcpScope(context, 'memory_recall'), 'memory:read');
+  assert.equal(requireHostedMcpScope(context, 'memory_proposal_status'), 'memory:read');
+  await failure(Promise.resolve().then(() => requireHostedMcpScope(context, 'memory_propose')), 'insufficient_scope', 403);
+});
+
+test('rejects malformed, unsigned, wrong-claim, time, UUID, and signature inputs', async () => {
   const otherKey = generateKeyPairSync('rsa', { modulusLength: 2048 }).privateKey;
   const cases = [
-    token({}, otherKey),
-    token({ iss: 'https://evil.example.test/' }),
-    token({ aud: 'other-audience' }),
-    token({ resource: 'https://other.example.test/' }),
-    token({ exp: NOW - 31 }),
-    token({ nbf: NOW + 31 }),
-    token({ scope: 'memory:read' }),
+    'opaque-token',
+    jwt({}, { key: otherKey }),
+    jwt({ iss: 'https://evil.example.test/' }),
+    jwt({ aud: 'https://other.example.test/mcp' }),
+    jwt({ resource: 'https://other.example.test/mcp' }),
+    jwt({ sub: 'not-a-uuid' }),
+    jwt({ workspace_id: 'not-a-uuid' }),
+    jwt({ exp: NOW - 31 }),
+    jwt({ nbf: NOW + 31 }),
   ];
-  for (const [index, value] of cases.entries()) {
-    const operation = index === cases.length - 1 ? 'memory_propose' : 'memory_recall';
-    await failure(createOAuthResourceServer(options()).authorize({
+  for (const value of cases) {
+    await failure(createOAuthResourceServer(options()).authenticate({
       authorization: `Bearer ${value}`,
-      operation,
-    }), index === cases.length - 1 ? 'insufficient_scope' : 'invalid_token', index === cases.length - 1 ? 403 : 401);
+    }), 'invalid_token', 401);
   }
-  await failure(createOAuthResourceServer(options({
-    fetchImpl: async (url) => response(url === JWKS ? { keys: [jwk] } : { active: false }),
-  })).authorize({
-    authorization: `Bearer ${token()}`,
-    operation: 'memory_recall',
-  }), 'invalid_token', 401);
 });
 
-test('fails closed on JWKS, introspection, and malformed bearer failures with redacted logs', async () => {
-  const logs = [];
-  const failing = createOAuthResourceServer(options({
-    logger: (event) => logs.push(event),
-    fetchImpl: async () => { throw new Error(`must not log ${CALLER_TOKEN}`); },
+test('JWKS selection requires exactly one alg-compatible signing key', async () => {
+  for (const keys of [
+    [rsaJwk, { ...rsaJwk }],
+    [rsaJwk, { ...rsaJwk, alg: 'ES256' }],
+    [{ ...rsaJwk, use: 'enc' }],
+    [{ ...rsaJwk, key_ops: ['encrypt'] }],
+    [{ ...rsaJwk, alg: 'ES256' }],
+  ]) {
+    await failure(createOAuthResourceServer(options({
+      fetchImpl: async (url) => json(url === JWKS ? { keys } : { active: true }),
+    })).authenticate({ authorization: `Bearer ${jwt()}` }), 'invalid_token', 401);
+  }
+});
+
+test('mandatory introspection rejects revocation and any disagreement with signed claims', async () => {
+  const disagreements = [
+    { active: false },
+    { active: true, sub: '33333333-3333-3333-3333-333333333333' },
+    { active: true, workspace_id: '33333333-3333-3333-3333-333333333333' },
+    { active: true, iss: 'https://evil.example.test/' },
+    { active: true, aud: 'wrong' },
+    { active: true, resource: 'wrong' },
+    { active: true, scope: 'memory:read' },
+  ];
+  for (const active of disagreements) {
+    await failure(createOAuthResourceServer(options({
+      fetchImpl: async (url) => json(url === JWKS ? { keys: [rsaJwk] } : active),
+    })).authenticate({ authorization: `Bearer ${jwt()}` }), 'invalid_token', 401);
+  }
+});
+
+test('missing and malformed authorization are distinct internally but public invalid_token', async () => {
+  const server = createOAuthResourceServer(options());
+  await failure(server.authenticate({}), 'invalid_token', 401, true);
+  await failure(server.authenticate({ authorization: 'Basic nope' }), 'invalid_token', 401);
+  await failure(server.authenticate({ authorization: `Bearer ${jwt()}, Bearer second` }), 'invalid_token', 401);
+});
+
+test('provider failures fail closed and logs contain no bearer or claims', async () => {
+  const events = [];
+  const token = jwt();
+  const server = createOAuthResourceServer(options({
+    logger: (event) => events.push(event),
+    fetchImpl: async () => { throw new Error('provider unavailable'); },
   }));
-  await failure(failing.authorize({
-    authorization: `Bearer ${token()}`,
-    operation: 'memory_recall',
+  await failure(server.authenticate({
+    authorization: `Bearer ${token}`,
     requestId: 'req_safe-2',
   }), 'temporarily_unavailable', 503);
-  await failure(createOAuthResourceServer(options()).authorize({
-    authorization: `Bearer ${CALLER_TOKEN},Bearer second`,
-    operation: 'memory_recall',
-  }), 'invalid_token', 401);
-  assert.deepEqual(logs, [{
+  assert.deepEqual(events, [{
     event: 'oauth_resource_server_failure',
     reason: 'temporarily_unavailable',
     request_id: 'req_safe-2',
   }]);
-  assert(!JSON.stringify(logs).includes(CALLER_TOKEN));
+  assert.equal(JSON.stringify(events).includes(token), false);
+  assert.equal(JSON.stringify(events).includes(SUBJECT), false);
 });
 
-test('isolates static staging bearer tokens from the OAuth beta resource', async () => {
-  assert.throws(() => createOAuthResourceServer(options({
+test('resource server requires both JWKS and fail-closed introspection configuration', () => {
+  assert.throws(() => createOAuthResourceServer(options({ jwksUri: undefined })));
+  assert.throws(() => createOAuthResourceServer(options({ introspectionEndpoint: undefined })));
+  assert.throws(() => createOAuthResourceServer(options({ introspectionAuthorization: undefined })));
+  assert.throws(() => createOAuthResourceServer(options({ algorithms: ['HS256'] })));
+  assert.equal(createOAuthResourceServer(options()).authorize, undefined);
+});
+
+test('legacy consumers retain introspection-only construction, callbacks, and authorize()', async () => {
+  const server = createOAuthResourceServer(legacyOptions());
+  assert.equal(typeof server.authorize, 'function');
+  assert.equal(server.authenticate, undefined);
+  const authorization = await server.authorize({
+    authorization: 'Bearer opaque-legacy-token',
+    operation: 'memory_recall',
+  });
+  assert.deepEqual(authorization.identity, {
+    userId: 'user:legacy-subject',
+    workspaceId: 'workspace:legacy',
+    subject: 'legacy-subject',
+  });
+  assert.deepEqual(authorization.scopes, ['memory:read', 'memory:propose']);
+  assert(authorization.client instanceof AgentMemoryClient);
+});
+
+test('legacy static-bearer option remains isolated from OAuth resources and never authenticates', async () => {
+  assert.throws(() => createOAuthResourceServer(legacyOptions({
     staticBearer: { token: 'legacy-token', resources: [RESOURCE] },
   })), /must not include the OAuth resource/);
-  const server = createOAuthResourceServer(options({
+  const server = createOAuthResourceServer(legacyOptions({
     staticBearer: {
       token: 'legacy-token',
       resources: ['https://legacy-staging.example.test/mcp'],
@@ -238,5 +287,6 @@ test('isolates static staging bearer tokens from the OAuth beta resource', async
   await failure(server.authorize({
     authorization: 'Bearer legacy-token',
     operation: 'memory_recall',
+    requestResource: 'https://legacy-staging.example.test/mcp',
   }), 'invalid_token', 401);
 });

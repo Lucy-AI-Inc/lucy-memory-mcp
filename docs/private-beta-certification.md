@@ -1,5 +1,35 @@
 # Private-beta certification
 
+## LUC-1078 hosted Vercel checklist
+
+The current lane provides local source evidence for the following items:
+
+- [x] Separate framework-less Vercel function configuration: `iad1`, 2 GB, 60 seconds, with POST-only `/mcp`, `/healthz`, and both RFC 9728 metadata routes.
+- [x] Fresh web-standard Streamable HTTP server and transport per request, sharing the existing three-tool core with stdio and Node HTTP.
+- [x] RS256/ES256 JWT verification, exact audience/resource/workspace binding, mandatory fail-closed introspection, scope challenges, and guarded non-production static mode.
+- [x] One-scope PRODUCT credential exchange, shared global/per-scope admission acquisition, release in `finally`, 8 KiB raw-body limit, 55-second internal deadline, and stable HTTP errors.
+- [x] No client-token passthrough and privacy-safe terminal logs with HMAC-hashed subject/workspace identifiers.
+- [x] Operator-only Vercel/DNS/firewall/spend controls are documented without runtime mutation code.
+- [x] Disposable local E2E entry point and TEST-ONLY OAuth stand-in are excluded from the Vercel bundle.
+
+These items still require hosted/operator inputs and are not proven by local tests:
+
+- [ ] Brian selects and approves the managed OAuth provider and supplies its issuer, JWKS, introspection, revocation, claims, client, and redirect details.
+- [ ] An operator creates/links the separate `lucy-memory-mcp` Vercel project, enables Fluid compute, installs secrets, and records the deployed SHA/settings.
+- [ ] DNS/TLS provisions `mcp.trylucy.ai`; both metadata paths and the canonical `/mcp` resource are verified over HTTPS.
+- [ ] Vercel Firewall 300/5 minutes/IP, the 1,000,000 request/month hard stop, and the $25/month compute alert are configured and evidenced.
+- [ ] Brian/Josh apply and verify the single PRODUCT admission migration in the protected staging database.
+- [ ] Hosted two-instance evidence proves the shared global 50 cap, lease expiry/recovery, independent kill switches, and unaffected real chat.
+- [ ] Hosted provider revocation, sampled redacted logs, staging billing compatibility, rollback, and disposable-account cleanup are captured for go/no-go.
+
+Run the disposable cross-repository proof outside the restricted sandbox with Docker and network access:
+
+```sh
+HMCP_PRODUCT_WT=/absolute/path/to/lucy_ai_frontend_nextjs \
+HMCP_EVIDENCE_DIR=/absolute/path/to/evidence \
+node scripts/e2e/hosted-local.mjs
+```
+
 Run the local/mock certification from a trusted checkout:
 
 ```sh
@@ -45,11 +75,11 @@ These commits may be cited as local proof, but they do not satisfy hosted gates:
 
 The LUC-1077 fixtures require no change for the bearer-free LUC-1074 contract: identity remains derived at the validated grant boundary and the no-passthrough assertions remain aligned. This is compatibility evidence, not hosted proof.
 
-LUC-1073 source proof does not satisfy hosted OAuth certification. Route wiring from LUC-1070, configured LUC-1072 values and membership resolver, the deployed exchange, and staging execution evidence remain required.
+LUC-1073 source proof does not satisfy hosted OAuth certification. The selected provider configuration, deployed PRODUCT exchange, and staging execution evidence remain required.
 
-LUC-1075 source proof does not satisfy hosted protection certification. LUC-1070 raw-body wiring, LUC-1071 WAF and edge controls, product shared-authority integration, deployed two-instance evidence, and operator-configured ceilings remain required.
+LUC-1075 source proof does not satisfy hosted protection certification. The Vercel Firewall rule, PRODUCT shared-authority integration, deployed two-instance evidence, and operator-configured ceilings remain required.
 
-The LUC-1069 topology decision record pins source baselines only: public MCP `a84db7211b104a80311cc7a610cfc228764c8a75`, internal MCP `db81d27ce159cdeb322735eb6ccb02c0691a1f86`, and product `c475c42c7408aac4a25e47ef52269f2f9065cdb0`. Dedicated isolated ECS Fargate is the selected topology. These are not deployment evidence.
+Earlier ECS artifacts and source baselines are legacy evidence only. LUC-1078 selects the separate `lucy-memory-mcp` Vercel project in `iad1`; no ECS artifact is deployment evidence for this release.
 
 ## Fail-closed go/no-go
 
@@ -62,13 +92,13 @@ The generated decision is `NO-GO` unless every gate below is backed by external 
 - LUC-1077 adversarial isolation suite
 - LUC-905 proposal-contract resolution
 - staging adapter and HTTPS endpoint
-- live ECS, ALB, CloudWatch, and immutable rollback evidence using LUC-1071 deployment identifiers and environment access
+- live Vercel project settings, deployment identity, redacted logs, and Instant Rollback evidence
 - OAuth resource server, audience, and client credentials
 - product-side service-authenticated credential mint/exchange integration
 - two authorized disposable workspaces
 - hosted revocation/TTL and limit/billing behavior
 - sampled hosted log access and an explicit auto-memory policy
-- selected deployment region, public hostname, and Auto Scaling configuration
+- verified `iad1` region, Fluid compute, 2 GB memory, 60-second duration, and public hostname
 - real deployed connector, service, and harness commit SHAs
 - Claude-compatible hosted HTTP MCP conformance
 - real before/during chat comparison at beta load
