@@ -30,11 +30,13 @@ export async function writeWebResponse(webResponse, response) {
     stream.once('error', reject);
     response.once('error', reject);
     response.once('finish', resolve);
-    response.once('close', () => {
+    const close = () => {
       if (!response.writableFinished) stream.destroy();
       resolve();
-    });
-    stream.pipe(response);
+    };
+    response.once('close', close);
+    if (response.destroyed || response.closed) close();
+    else stream.pipe(response);
   });
 }
 

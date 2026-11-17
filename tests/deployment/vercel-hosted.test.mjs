@@ -81,3 +81,28 @@ test('Vercel response piping settles when the client closes before finish', { ti
   await writeWebResponse(new Response(body), response);
   assert.equal(response.writableFinished, false);
 });
+
+test('Vercel response piping settles when the client already closed', { timeout: 1_000 }, async () => {
+  const response = new Writable({
+    write(_chunk, _encoding, callback) {
+      callback();
+    },
+  });
+  response.writeHead = () => response;
+  response.destroy();
+  await new Promise((resolve) => response.once('close', resolve));
+
+  let cancelled = false;
+  const body = new ReadableStream({
+    start(controller) {
+      controller.enqueue(new TextEncoder().encode('partial'));
+    },
+    cancel() {
+      cancelled = true;
+    },
+  });
+
+  await writeWebResponse(new Response(body), response);
+  assert.equal(cancelled, true);
+  assert.equal(response.writableFinished, false);
+});
