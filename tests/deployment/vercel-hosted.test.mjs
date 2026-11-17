@@ -1,11 +1,17 @@
 import assert from 'node:assert/strict';
-import { readFileSync } from 'node:fs';
+import { execFileSync } from 'node:child_process';
+import { copyFileSync, mkdirSync, mkdtempSync, readFileSync, rmSync } from 'node:fs';
+import { tmpdir } from 'node:os';
+import { join } from 'node:path';
 import { Writable } from 'node:stream';
 import test from 'node:test';
+import { pathToFileURL } from 'node:url';
 import vercelHandler, { writeWebResponse } from '../../api/index.mjs';
 
 const root = new URL('../../', import.meta.url);
 const read = (path) => readFileSync(new URL(path, root), 'utf8');
+const gitFiles = (args) => execFileSync('git', args, { cwd: root, encoding: 'utf8' })
+  .split('\0').filter(Boolean);
 
 test('Vercel project source pins iad1, 2 GB, 60 seconds, and exact hosted routes', () => {
   const config = JSON.parse(read('vercel.json'));
@@ -28,14 +34,40 @@ test('Vercel project source pins iad1, 2 GB, 60 seconds, and exact hosted routes
   assert.equal(JSON.stringify(config).includes('secret'), false);
 });
 
-test('Vercel bundle always excludes TEST-ONLY OAuth/harness and infrastructure fixtures', () => {
-  const ignored = read('.vercelignore');
-  for (const required of ['scripts/e2e/', 'tests/', 'fixtures/', 'infra/', 'deploy/']) {
-    assert.match(ignored, new RegExp(required.replace('/', '\\/')));
+test('Vercel packed source includes the usage skill and excludes TEST-ONLY files', () => {
+  const tracked = gitFiles(['ls-files', '-z']);
+  const ignored = new Set(gitFiles(['ls-files', '-ciz', '--exclude-from=.vercelignore']));
+  const packed = tracked.filter((path) => !ignored.has(path));
+  const config = JSON.parse(read('vercel.json'));
+  const includeFiles = config.functions['api/index.mjs'].includeFiles;
+  const bundled = packed.filter((path) => includeFiles.some((pattern) => (
+    pattern.endsWith('/**') ? path.startsWith(pattern.slice(0, -2)) : path === pattern
+  )));
+
+  assert.ok(bundled.includes('.github/skills/lucy-memory-first/SKILL.md'));
+  assert.equal(packed.some((path) => path.startsWith('.github/')
+    && path !== '.github/skills/lucy-memory-first/SKILL.md'), false);
+  for (const prefix of ['scripts/e2e/', 'tests/', 'fixtures/', 'infra/', 'deploy/']) {
+    assert.equal(packed.some((path) => path.startsWith(prefix)), false, `${prefix} was packed`);
   }
-  const adapter = read('api/index.mjs');
-  assert.match(adapter, /handleHostedMcpRequest/);
-  assert.doesNotMatch(adapter, /scripts\/e2e|test-oauth-as/);
+  for (const path of ['scripts/private-beta-certify.mjs', 'scripts/hosted-mcp-drill.mjs']) {
+    assert.equal(packed.includes(path), false, `${path} was packed`);
+  }
+});
+
+test('onboarding usage is importable when the usage skill file is missing', async (t) => {
+  const temporaryRoot = mkdtempSync(join(tmpdir(), 'lucy-missing-skill-'));
+  t.after(() => rmSync(temporaryRoot, { recursive: true, force: true }));
+  mkdirSync(join(temporaryRoot, 'src/onboarding'), { recursive: true });
+  mkdirSync(join(temporaryRoot, 'contracts'));
+  copyFileSync(new URL('../../src/onboarding/usage.mjs', import.meta.url),
+    join(temporaryRoot, 'src/onboarding/usage.mjs'));
+  copyFileSync(new URL('../../contracts/agent-manifest.json', import.meta.url),
+    join(temporaryRoot, 'contracts/agent-manifest.json'));
+
+  const usage = await import(pathToFileURL(join(temporaryRoot, 'src/onboarding/usage.mjs')));
+  assert.equal(usage.LUCY_USAGE_SKILL, '');
+  assert.equal(usage.usageSkillText(), '');
 });
 
 test('Vercel environment example contains placeholders only and no database credentials', () => {

@@ -1,6 +1,11 @@
 # Runtime-irrelevant source and local artifacts
 .git/
-.github/
+.github/*
+!.github/skills/
+.github/skills/*
+!.github/skills/lucy-memory-first/
+.github/skills/lucy-memory-first/*
+!.github/skills/lucy-memory-first/SKILL.md
 .tmp/
 coverage/
 deploy/
