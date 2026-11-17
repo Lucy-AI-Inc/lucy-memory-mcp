@@ -78,6 +78,7 @@ const tempRoot = mkdtempSync(join(tmpdir(), 'lucy-hmcp-e2e-'));
 const PRODUCT_RAW_LOG = join(tempRoot, 'product.raw.log');
 const MCP_RAW_LOG = join(tempRoot, 'mcp.raw.log');
 const OAUTH_RAW_LOG = join(tempRoot, 'oauth.raw.log');
+const OBSERVER_RAW_LOG = join(tempRoot, 'observer.raw.ndjson');
 const projectId = `lucy-hmcp-e2e-${randomBytes(6).toString('hex')}`;
 writeFileSync(join(tempRoot, '.hmcp-owned'), `${projectId}\n`, { mode: 0o600 });
 
@@ -156,7 +157,7 @@ function spawnLogged(command, args, { cwd, env, logPath }) {
   return child;
 }
 
-function extractJsonLog(source, target) {
+function extractJsonLog(source, target, { redact = false } = {}) {
   const records = existsSync(source)
     ? readFileSync(source, 'utf8').split('\n').map((line) => line.trim()).filter(Boolean).flatMap((line) => {
       let value;
@@ -165,8 +166,9 @@ function extractJsonLog(source, target) {
       } catch { return []; }
       if (!value || typeof value !== 'object') return [];
       const serialized = JSON.stringify(value);
-      assertSafeEvidenceText(serialized);
-      return [serialized];
+      const evidence = redact ? redactEvidenceText(serialized, sensitiveValues) : serialized;
+      assertSafeEvidenceText(evidence);
+      return [evidence];
     })
     : [];
   writeFileSync(target, records.length ? `${records.join('\n')}\n` : '', { mode: 0o600 });
@@ -176,6 +178,7 @@ function refreshEvidenceLogs() {
   extractJsonLog(PRODUCT_RAW_LOG, PRODUCT_LOG);
   extractJsonLog(MCP_RAW_LOG, MCP_LOG);
   extractJsonLog(OAUTH_RAW_LOG, OAUTH_LOG);
+  extractJsonLog(OBSERVER_RAW_LOG, OBSERVER_LOG, { redact: true });
 }
 
 async function stopChild(child) {
@@ -390,7 +393,7 @@ function adapterEnvironment(enabled = true) {
     HOSTED_MCP_OAUTH_INTROSPECTION_AUTHORIZATION: INTROSPECTION_AUTHORIZATION,
     HOSTED_MCP_LOG_HASH_KEY: LOG_KEY,
     HOSTED_MCP_ALLOW_INSECURE_LOOPBACK: 'true',
-    HMCP_OBSERVER_PATH: OBSERVER_LOG,
+    HMCP_OBSERVER_PATH: OBSERVER_RAW_LOG,
     HMCP_OBSERVER_KEY: OBSERVER_KEY,
   };
 }
@@ -528,8 +531,8 @@ async function directAdmission(path, body) {
 }
 
 function observerRecords() {
-  if (!existsSync(OBSERVER_LOG)) return [];
-  return readFileSync(OBSERVER_LOG, 'utf8').split('\n').filter(Boolean).map(JSON.parse);
+  if (!existsSync(OBSERVER_RAW_LOG)) return [];
+  return readFileSync(OBSERVER_RAW_LOG, 'utf8').split('\n').filter(Boolean).map(JSON.parse);
 }
 
 function productObserverCount() {
@@ -734,8 +737,7 @@ async function main() {
     return 'header stripped upstream and tool workspace field schema-rejected';
   });
   await record('no_passthrough', async () => {
-    const observations = readFileSync(OBSERVER_LOG, 'utf8').trim().split('\n').filter(Boolean).map(JSON.parse);
-    const upstream = observations.filter(({ event }) => event === 'hosted_mcp_fetch_observer');
+    const upstream = observerRecords().filter(({ event }) => event === 'hosted_mcp_fetch_observer');
     assert(upstream.length > 0);
     assert(upstream.every((entry) => entry.auth_scheme === 'bearer_lucy_xc1' && entry.client_upstream_equal === false));
     return 'observer proves client and upstream credentials differ';
@@ -830,7 +832,8 @@ async function main() {
     }
     assert.doesNotMatch(logs, /authorization/i);
     const parsedMcp = readFileSync(MCP_LOG, 'utf8').split('\n').filter((line) => line.includes('hosted_mcp_request')).map(JSON.parse);
-    assert(parsedMcp.some((entry) => entry.request_id && entry.subject_hash?.startsWith('h1:')));
+    assert(parsedMcp.some((entry) => entry.request_id
+      && entry.subject_hash?.startsWith('h1:') && entry.workspace_hash?.startsWith('h1:')));
     const terminalKeys = [
       'admission_outcome', 'event', 'http_status', 'latency_ms', 'level', 'outcome',
       'request_id', 'subject_hash', 'timestamp', 'tool', 'upstream_status', 'workspace_hash',
@@ -851,12 +854,12 @@ async function main() {
   await record('old_schema', async () => {
     const session = await login(status, 'alice-hmcp@example.test', ALICE_PASSWORD);
     const token = await authorizeWorkspace(session, WORKSPACE_A);
-    const before = existsSync(OBSERVER_LOG) ? readFileSync(OBSERVER_LOG, 'utf8').split('\n').length : 0;
+    const before = observerRecords().length;
     const response = await rawMcp(token, toolBody('memory_recall', { query: 'old-schema', scope: { kind: 'user' } }));
     assert.equal(response.status, 503);
     assert.deepEqual(await response.json(), { error: 'hosted_mcp_unavailable' });
     assert.equal((await fetch(`${PRODUCT_URL}/api/health`)).status, 200);
-    const afterLines = readFileSync(OBSERVER_LOG, 'utf8').split('\n').slice(before).filter(Boolean).map(JSON.parse);
+    const afterLines = observerRecords().slice(before);
     assert.equal(afterLines.some(({ event }) => event === 'hosted_mcp_fetch_observer'), false);
     oldSchemaEvidence.result = 'hosted 503, product health 200, no Agent Memory fetch';
     return 'missing admission schema failed closed without upstream call';

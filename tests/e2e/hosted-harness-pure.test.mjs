@@ -53,6 +53,27 @@ test('evidence text redaction preserves untruncated diagnostics', () => {
   assert.equal(output.length > 2_000, true);
 });
 
+test('hosted observer keeps raw assertions separate from redacted evidence', () => {
+  const proposalId = 'proposal_canonical_sensitive_id';
+  const raw = JSON.stringify({
+    event: 'hosted_mcp_fetch_observer',
+    path: `/api/lucy/agent-memory/v1/proposals/${proposalId}`,
+    auth_scheme: 'bearer_lucy_xc1',
+    client_upstream_equal: false,
+    workspace_header_present: false,
+  });
+  const safe = JSON.parse(redactEvidenceText(raw, [proposalId]));
+  assert.equal(safe.path, '/api/lucy/agent-memory/v1/proposals/[REDACTED]');
+  assert.equal(safe.auth_scheme, 'bearer_lucy_xc1');
+  assert.equal(safe.client_upstream_equal, false);
+  assert.equal(safe.workspace_header_present, false);
+
+  const source = readFileSync(new URL('../../scripts/e2e/hosted-local.mjs', import.meta.url), 'utf8');
+  assert.match(source, /const OBSERVER_RAW_LOG = join\(tempRoot, 'observer\.raw\.ndjson'\);/);
+  assert.match(source, /HMCP_OBSERVER_PATH: OBSERVER_RAW_LOG/);
+  assert.match(source, /extractJsonLog\(OBSERVER_RAW_LOG, OBSERVER_LOG, \{ redact: true \}\);/);
+});
+
 test('hosted PRODUCT gets one encrypted-memory key for proposal creation and later approval', () => {
   const source = readFileSync(new URL('../../scripts/e2e/hosted-local.mjs', import.meta.url), 'utf8');
   assert.match(source, /const MEMORY_ENCRYPTION_KEY = randomBytes\(32\)\.toString\('base64'\);/);
