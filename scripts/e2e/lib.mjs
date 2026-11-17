@@ -80,6 +80,34 @@ function rebaseSupabaseContentPaths(source) {
   );
 }
 
+function setTomlBoolean(source, section, key, value) {
+  const newline = source.includes('\r\n') ? '\r\n' : '\n';
+  const lines = source.split(/\r?\n/);
+  const header = `[${section}]`;
+  const sectionIndex = lines.findIndex((line) => line.trim() === header);
+  if (sectionIndex < 0) {
+    const separator = source.endsWith('\n') || source.endsWith('\r') ? '' : newline;
+    return `${source}${separator}${header}${newline}${key} = ${value}${newline}`;
+  }
+
+  let sectionEnd = lines.length;
+  for (let index = sectionIndex + 1; index < lines.length; index += 1) {
+    if (/^\s*\[[^\]]+\]\s*(?:#.*)?$/.test(lines[index])) {
+      sectionEnd = index;
+      break;
+    }
+  }
+  const keyPattern = new RegExp(`^(\\s*${key}\\s*=\\s*)(?:true|false)(\\s*(?:#.*)?)$`);
+  for (let index = sectionIndex + 1; index < sectionEnd; index += 1) {
+    if (keyPattern.test(lines[index])) {
+      lines[index] = lines[index].replace(keyPattern, `$1${value}$2`);
+      return lines.join(newline);
+    }
+  }
+  lines.splice(sectionIndex + 1, 0, `${key} = ${value}`);
+  return lines.join(newline);
+}
+
 export function rewriteSupabaseConfig(source, projectId) {
   if (typeof source !== 'string' || !/^lucy-hmcp-e2e-[a-f0-9]{12}$/.test(projectId)) {
     throw new Error('invalid disposable Supabase project id');
@@ -98,6 +126,11 @@ export function rewriteSupabaseConfig(source, projectId) {
   // the PRODUCT tree at <workdir>/supabase, so preserve those references by
   // rebasing project-relative paths to that copied tree.
   output = rebaseSupabaseContentPaths(output);
+  // The proof exercises PRODUCT over PostgREST/Auth and never invokes PRODUCT
+  // Edge Functions. Starting the edge runtime would make the Supabase CLI
+  // bundle every staged function, including imports outside supabase/, and is
+  // both unnecessary and incompatible with an isolated Supabase-only copy.
+  output = setTomlBoolean(output, 'edge_runtime', 'enabled', false);
   if (!/^\[analytics\]/m.test(output)) {
     output += `\n[analytics]\nenabled = true\nport = ${E2E_PORTS.analytics}\nvector_port = ${E2E_PORTS.vector}\n`;
   }
@@ -131,9 +164,9 @@ export function stageSupabaseProject(source, target, projectId, { oldSchema = fa
   if (existsSync(targetRoot)) rmSync(targetRoot, { recursive: true, force: true });
   mkdirSync(targetRoot, { recursive: true });
   cpSync(migrationsPath, resolve(targetRoot, 'migrations'), { recursive: true });
-  // Supabase start resolves configured Edge Function entrypoints even though
-  // this proof never invokes them. Carry the complete functions tree so its
-  // shared imports remain intact, alongside the seed and auth templates.
+  // Keep the Supabase tree faithful for migrations, seeding, auth templates,
+  // and configuration. Edge execution is explicitly disabled above because
+  // this proof reaches PRODUCT routes rather than PRODUCT Edge Functions.
   for (const name of ['seed.sql', 'templates', 'functions']) {
     const from = resolve(sourceRoot, name);
     if (existsSync(from)) cpSync(from, resolve(targetRoot, name), { recursive: true });

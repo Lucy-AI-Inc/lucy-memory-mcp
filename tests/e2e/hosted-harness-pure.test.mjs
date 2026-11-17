@@ -25,8 +25,15 @@ test('disposable Supabase config rewrites owned ports and staged file paths', ()
   assert.match(output, /content_path = "\.\/supabase\/templates\/confirmation\.html"/);
   assert.match(output, /content_path = "\.\/supabase\/templates\/magic_link\.html"/);
   assert.doesNotMatch(output, /content_path = "\.\/templates\//);
+  assert.match(output, /\[edge_runtime\]\nenabled = false/);
   assert.equal(isOwnedProjectId('lucy-hmcp-e2e-012345abcdef'), true);
   assert.equal(isOwnedProjectId('lucy-v0-frontend-fork-local'), false);
+});
+
+test('disposable Supabase config overrides an enabled edge runtime', () => {
+  const output = rewriteSupabaseConfig(`${config}\n[edge_runtime]\nenabled = true # local default\n`, 'lucy-hmcp-e2e-012345abcdef');
+  assert.match(output, /\[edge_runtime\]\nenabled = false # local default/);
+  assert.doesNotMatch(output, /enabled = true # local default/);
 });
 
 test('PKCE S256 matches the RFC 7636 example', () => {
@@ -50,7 +57,7 @@ test('hosted admission migration is identified by its SQL authority, not its tim
   assert.throws(() => migrationAuthority([admission, admission]), /expected exactly one hosted admission migration, found 2/);
 });
 
-test('disposable Supabase staging includes configured Edge Functions and shared imports', (t) => {
+test('disposable Supabase staging disables Edge execution and preserves source files', (t) => {
   const directory = mkdtempSync(join(tmpdir(), 'hmcp-supabase-stage-'));
   t.after(() => rmSync(directory, { recursive: true, force: true }));
   const source = join(directory, 'product-supabase');
@@ -72,6 +79,7 @@ test('disposable Supabase staging includes configured Edge Functions and shared 
 
   stageSupabaseProject(source, target, 'lucy-hmcp-e2e-012345abcdef');
 
+  assert.match(readFileSync(join(target, 'config.toml'), 'utf8'), /\[edge_runtime\]\nenabled = false/);
   assert.equal(readFileSync(join(target, 'functions', 'stripe-webhook', 'index.ts'), 'utf8'), "import '../_shared/runtime.ts';\n");
   assert.equal(readFileSync(join(target, 'functions', '_shared', 'runtime.ts'), 'utf8'), 'export {};\n');
   assert.equal(readFileSync(join(target, 'seed.sql'), 'utf8'), '-- disposable seed\n');
