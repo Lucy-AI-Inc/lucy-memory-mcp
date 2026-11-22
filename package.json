@@ -62,6 +62,10 @@
       "types": "./src/provider/index.d.ts",
       "import": "./src/provider/index.mjs"
     },
+    "./onboarding": {
+      "types": "./src/onboarding/index.d.ts",
+      "import": "./src/onboarding/index.mjs"
+    },
     "./hermes": {
       "types": "./src/integrations/hermes.d.ts",
       "import": "./src/integrations/hermes.mjs"

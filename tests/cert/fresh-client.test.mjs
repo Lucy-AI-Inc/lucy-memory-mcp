@@ -1,5 +1,5 @@
 import assert from 'node:assert/strict';
-import { readFileSync } from 'node:fs';
+import { mkdtempSync, readFileSync, rmSync } from 'node:fs';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import test from 'node:test';
@@ -7,14 +7,18 @@ import Ajv2020 from 'ajv/dist/2020.js';
 import addFormats from 'ajv-formats';
 import { AgentMemoryClient } from '../../src/client/client.mjs';
 import { createLucyHttpTransport } from '../../src/client/http-transport.mjs';
-import { LUCY_MEMORY_TOOL_NAMES } from '../../src/mcp/server.mjs';
+import { LUCY_MEMORY_TOOL_NAMES, LUCY_MEMORY_TOOLS } from '../../src/mcp/server.mjs';
 import { MCP_SCHEMAS } from '../../src/mcp/schemas.mjs';
-import { publicManifest, usageSkillText } from '../../src/onboarding/usage.mjs';
+import {
+  installCopilotRepositorySkill,
+  publicManifest,
+  usageSkillCue,
+  usageSkillText,
+} from '../../src/onboarding/usage.mjs';
 import { classifyPrompt } from '../../src/routing/destination.mjs';
 import { detectSecret } from '../../src/safety/secrets.mjs';
 import { detectConflict, refreshProjections } from '../../src/projection/memory-md.mjs';
 import { listenIsolatedAm01 } from '../e2e/isolated-am01-authority.mjs';
-import { mkdtempSync, rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 
 const root = join(dirname(fileURLToPath(import.meta.url)), '../..');
@@ -31,6 +35,35 @@ test('fresh client: manifest, 3 tools, no private prompt, selective recall', () 
   assert.equal(classifyPrompt('what is 2+2').shouldRecall, false);
   assert.equal(classifyPrompt('what is the project rule').shouldRecall, true);
   assert.equal(detectSecret('password=supersecretvalue'), true);
+});
+
+test('fresh client: tool schemas carry canonical guidance without initialize instructions', () => {
+  const cue = usageSkillCue();
+  assert.ok(cue);
+  for (const expected of [
+    /Lucy/i,
+    /memory/i,
+    /recall/i,
+    /remembering durable context/i,
+    /saved preferences/i,
+    /prior decisions/i,
+    /prior rules/i,
+    /before relevant answers or work/i,
+    /only through proposals/i,
+    /verify approval status before claiming memory is saved/i,
+  ]) assert.match(cue, expected);
+  for (const tool of LUCY_MEMORY_TOOLS) assert.equal(tool.description.endsWith(cue), true);
+});
+
+test('fresh client: Copilot repository installer writes exact canonical bytes idempotently', (t) => {
+  const repositoryRoot = mkdtempSync(join(tmpdir(), 'lucy-copilot-skill-'));
+  t.after(() => rmSync(repositoryRoot, { recursive: true, force: true }));
+  const first = installCopilotRepositorySkill(repositoryRoot);
+  assert.equal(first.changed, true);
+  assert.equal(readFileSync(first.path, 'utf8'), usageSkillText());
+  const second = installCopilotRepositorySkill(repositoryRoot);
+  assert.deepEqual(second, { path: first.path, changed: false });
+  assert.throws(() => installCopilotRepositorySkill(''), /non-empty path/);
 });
 
 test('fresh client: usage skill pins governed memory behaviors and safety', () => {

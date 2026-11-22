@@ -1,8 +1,10 @@
 ---
 name: lucy-memory-first
 description: >-
-  Use Lucy proactively for compact, governed memory: pin standing rules, recall
-  before relevant work, and propose durable updates without storing chatter.
+  Use Lucy proactively for governed memory, recall, remembering durable context,
+  saved preferences, prior decisions, and prior rules: recall relevant context
+  before relevant answers or work, make durable writes only through proposals,
+  and verify approval status before claiming memory is saved.
 ---
 
 # Lucy memory-first
