@@ -61,6 +61,7 @@ test('npm pack dry-run allowlist excludes private governance and development art
   const names = result.files.map(({ path }) => path.replaceAll('\\', '/')).sort();
   for (const required of [
     'LICENSE', 'README.md', 'package.json', '.github/skills/lucy-memory-first/SKILL.md', 'src/client/index.mjs', 'src/client/index.d.ts',
+    'src/onboarding/index.mjs', 'src/onboarding/index.d.ts',
     'src/mcp/server.mjs', 'src/mcp/index.d.ts', 'src/mcp/stdio.mjs', 'src/mcp/stdio.d.ts',
     'src/mcp/http.mjs', 'src/mcp/http.d.ts', 'src/mcp/bin.mjs',
     'src/client/http-transport.mjs', 'src/client/http-transport.d.ts',
@@ -135,6 +136,7 @@ test('tarball installs in an empty consumer and exposes bin plus public exports'
     const stdio = await import('@trylucy/agent-memory/mcp/stdio');
     const http = await import('@trylucy/agent-memory/mcp/http');
     const provider = await import('@trylucy/agent-memory/provider');
+    const onboarding = await import('@trylucy/agent-memory/onboarding');
     const hermes = await import('@trylucy/agent-memory/hermes');
     if (typeof client.createLucyHttpTransport !== 'function') throw new Error('client export missing');
     if (typeof mcp.createLucyMemoryMcpServer !== 'function') throw new Error('mcp export missing');
@@ -143,6 +145,14 @@ test('tarball installs in an empty consumer and exposes bin plus public exports'
     }
     if (typeof http.startLucyMemoryMcpHttp !== 'function') throw new Error('http export missing');
     if (!provider.LucyMemoryFirstProvider && typeof provider.shouldRecall !== 'function') throw new Error('provider export missing');
+    if (typeof onboarding.installCopilotRepositorySkill !== 'function') throw new Error('onboarding export missing');
+    const installedSkill = onboarding.installCopilotRepositorySkill(process.cwd());
+    if (!installedSkill.changed || onboarding.usageSkillText() !== (await import('node:fs')).readFileSync(installedSkill.path, 'utf8')) {
+      throw new Error('onboarding installer did not write canonical bytes');
+    }
+    if (onboarding.installCopilotRepositorySkill(process.cwd()).changed) {
+      throw new Error('onboarding installer rewrote identical canonical bytes');
+    }
     if (typeof hermes.installHermesLucyConfig !== 'function') throw new Error('hermes export missing');
     console.log('public-exports-ok');
   `);

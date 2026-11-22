@@ -231,6 +231,16 @@ The machine-readable contract is in [contracts/agent-memory-api.contract.json](c
 
 Setup has two independent success criteria: **MCP connected** (the host discovers and can call Lucy's three tools) and **memory-first behavior installed** (the host loads the canonical skill above). See [Client setup](docs/clients.md#verify-setup) for Copilot, Grok, Hermes, and instruction-only adapters.
 
+For a Copilot repository, install the exact packaged skill bytes with:
+
+```js
+import { installCopilotRepositorySkill } from '@trylucy/agent-memory/onboarding';
+
+installCopilotRepositorySkill(process.cwd());
+```
+
+After changing either the MCP connector or a host skill, fully quit and relaunch the host application. Opening a new conversation in the existing process is not a reload. Existing users can rerun this idempotent helper after updating the package, then perform that cold restart.
+
 ## Support and security
 
 For setup questions and reproducible bugs, open a [GitHub issue](https://github.com/Lucy-AI-Inc/lucy-memory-mcp/issues). Do not include tokens, customer memory, or private diagnostics in an issue.

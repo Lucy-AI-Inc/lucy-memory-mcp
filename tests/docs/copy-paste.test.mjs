@@ -48,6 +48,11 @@ test('client docs link the supported host templates without embedding credential
   assert.match(docs, /Generic instruction-only host/);
   assert.match(docs, /MCP connected/);
   assert.match(docs, /Memory-first behavior installed/);
+  assert.match(docs, /installCopilotRepositorySkill/);
+  assert.match(docs, /fully quit and relaunch/i);
+  assert.match(docs, /canonical-derived tool metadata/);
+  assert.match(docs, /does not guess a native skills path/);
+  assert.match(docs, /cannot force a client to inject, activate, prioritize, or obey/);
   assert.doesNotMatch(docs, /sk_live_|ghp_|AKIA/);
 });
 
@@ -58,5 +63,6 @@ test('README documents the exact three tools and public imports', () => {
   assert.match(readme, /memory_proposal_status/);
   assert.match(readme, /@trylucy\/agent-memory\/mcp\/stdio/);
   assert.match(readme, /@trylucy\/agent-memory\/hermes/);
+  assert.match(readme, /@trylucy\/agent-memory\/onboarding/);
   assert.doesNotMatch(readme, /memory_approve|memory_forget|memory_resolve/);
 });

@@ -67,7 +67,9 @@ test('onboarding usage is importable when the usage skill file is missing', asyn
 
   const usage = await import(pathToFileURL(join(temporaryRoot, 'src/onboarding/usage.mjs')));
   assert.equal(usage.LUCY_USAGE_SKILL, '');
+  assert.equal(usage.usageSkillCue(), '');
   assert.equal(usage.usageSkillText(), '');
+  assert.throws(() => usage.installCopilotRepositorySkill(temporaryRoot), /skill is unavailable/);
 });
 
 test('Vercel environment example contains placeholders only and no database credentials', () => {

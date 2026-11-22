@@ -8,7 +8,7 @@ import {
 } from '../client/errors.mjs';
 import { stableSerialize } from '../client/serialization.mjs';
 import { MCP_SCHEMAS } from './schemas.mjs';
-import { usageSkillText } from '../onboarding/usage.mjs';
+import { usageSkillCue, usageSkillText } from '../onboarding/usage.mjs';
 
 export const LUCY_MEMORY_TOOL_NAMES = Object.freeze([
   'memory_recall',
@@ -59,25 +59,27 @@ const GET_PROTOTYPE_OF = Object.getPrototypeOf;
 const IS_FROZEN = Object.isFrozen;
 const IS_PROXY = utilTypes.isProxy;
 const REFLECT_APPLY = Reflect.apply;
+const MEMORY_FIRST_CUE = usageSkillCue();
+const describeTool = (description) => MEMORY_FIRST_CUE ? `${description} ${MEMORY_FIRST_CUE}` : description;
 
 export const LUCY_MEMORY_TOOLS = Object.freeze([
   Object.freeze({
     name: 'memory_recall',
-    description: 'Recall active approved Lucy memory only. Use for durable preferences, identity, project decisions, or explicit remember/recall. Do not use for arithmetic, weather, news, or one-shot drafting.',
+    description: describeTool('Recall active approved Lucy memory only. Use for durable preferences, identity, project decisions, or explicit remember/recall. Do not use for arithmetic, weather, news, or one-shot drafting.'),
     annotations: Object.freeze({ readOnlyHint: true, destructiveHint: false, idempotentHint: false, openWorldHint: true }),
     inputSchema: MCP_SCHEMAS.recallInput,
     outputSchema: MCP_SCHEMAS.canonicalRecallOutput,
   }),
   Object.freeze({
     name: 'memory_propose',
-    description: 'Propose a durable Lucy memory write. Success means pending, not saved. Do not send secrets. Humans approve on Lucy unless they enabled auto memory.',
+    description: describeTool('Propose a durable Lucy memory write. Success means pending, not saved. Do not send secrets. Humans approve on Lucy unless they enabled auto memory.'),
     annotations: Object.freeze({ readOnlyHint: false, destructiveHint: false, idempotentHint: true, openWorldHint: true }),
     inputSchema: MCP_SCHEMAS.proposalInput,
     outputSchema: MCP_SCHEMAS.proposalOutput,
   }),
   Object.freeze({
     name: 'memory_proposal_status',
-    description: 'Read whether a Lucy proposal is pending, approved, rejected, expired, or superseded. Pending memory is not recallable.',
+    description: describeTool('Read whether a Lucy proposal is pending, approved, rejected, expired, or superseded. Pending memory is not recallable.'),
     annotations: Object.freeze({ readOnlyHint: true, destructiveHint: false, idempotentHint: false, openWorldHint: true }),
     inputSchema: MCP_SCHEMAS.proposalStatusInput,
     outputSchema: MCP_SCHEMAS.proposalOutput,

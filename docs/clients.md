@@ -67,12 +67,14 @@ The canonical, vendor-neutral instructions are in [`.github/skills/lucy-memory-f
 
 | Host | Adapter |
 |---|---|
-| GitHub Copilot | Copy the `lucy-memory-first` directory into the repository's `.github/skills/` directory. This repository is already installed correctly. |
+| GitHub Copilot | Run `installCopilotRepositorySkill(repositoryRoot)` from `@trylucy/agent-memory/onboarding`. It idempotently writes exact canonical bytes to `.github/skills/lucy-memory-first/SKILL.md`. |
 | Grok | Paste the canonical `SKILL.md` body into the Grok workspace or agent custom instructions. Keep the title and rules; YAML front matter may be omitted when the field accepts plain instructions only. |
-| Hermes | Install the Lucy MCP entry with `installHermesLucyConfig`. Lucy surfaces the canonical skill as MCP server `instructions`; if the Hermes deployment has a native skills directory, install the same `lucy-memory-first` directory there as well. |
+| Hermes | Install the Lucy MCP entry with `installHermesLucyConfig`. Lucy surfaces the canonical skill as MCP server `instructions` and canonical-derived tool metadata. The installer does not guess a native skills path; copy the canonical directory only when the deployment defines a supported target. |
 | Generic instruction-only host | Paste the canonical `SKILL.md` body into persistent project instructions. YAML front matter may be omitted. |
 
 The npm package includes the canonical file at `node_modules/@trylucy/agent-memory/.github/skills/lucy-memory-first/SKILL.md`, so adapters can copy it without fetching a second source.
+
+Fully quit and relaunch the host after changing its connector or skill. A new conversation in the existing host process does not reload either layer. MCP can expose initialization instructions and canonical-derived tool metadata, but it cannot force a client to inject, activate, prioritize, or obey them; native skill loading remains host-owned.
 
 ## Verify setup
 

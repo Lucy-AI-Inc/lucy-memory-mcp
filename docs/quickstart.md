@@ -37,16 +37,24 @@ Use the host's secret store or protected environment for the token. Never commit
 
 Connecting MCP exposes tools; it does not guarantee that the host will use them proactively. Install or surface the canonical [Lucy memory-first skill](../.github/skills/lucy-memory-first/SKILL.md) using the adapter for your host:
 
-- **GitHub Copilot:** keep the canonical file at `.github/skills/lucy-memory-first/SKILL.md` in the repository.
+- **GitHub Copilot:** persist the exact packaged skill bytes in the repository:
+
+  ```js
+  import { installCopilotRepositorySkill } from '@trylucy/agent-memory/onboarding';
+
+  installCopilotRepositorySkill(process.cwd());
+  ```
+
+  The helper writes `.github/skills/lucy-memory-first/SKILL.md` beneath the repository root and is safe to rerun after package updates.
 - **Grok:** add the canonical skill body to the workspace or agent custom instructions.
 - **Hermes:** the MCP server surfaces the canonical skill through its MCP `instructions`; also add the same file through Hermes' supported skill mechanism when proactive behavior must not depend on MCP-instruction support.
 - **Instruction-only hosts:** copy the canonical skill body into the host's persistent project instructions.
 
-Do not maintain a host-specific rewrite. See [Client setup](clients.md#memory-first-behavior-adapters) for exact adapters.
+Do not maintain a host-specific rewrite. Every Lucy tool schema also includes guidance derived from the canonical skill for clients that ignore initialization instructions. After installing or updating either layer, fully quit and relaunch the host application. Opening a new conversation in the existing process is not sufficient. See [Client setup](clients.md#memory-first-behavior-adapters) for exact adapters.
 
 ## 4. Verify MCP connectivity
 
-Restart the host and confirm it discovers exactly:
+Cold-restart the host process and confirm it discovers exactly:
 
 - `memory_recall`
 - `memory_propose`
